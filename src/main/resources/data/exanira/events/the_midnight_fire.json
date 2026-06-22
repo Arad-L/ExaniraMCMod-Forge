@@ -1,0 +1,231 @@
+{
+  "id": "the_midnight_fire",
+  "type": "side",
+  "offlineFallback": "ignore",
+  "startScene": "smoke_on_horizon",
+  "scenes": {
+    "smoke_on_horizon": {
+      "dialogue": [
+        "Just before sunset, you spot a column of smoke rising beyond a line of trees.",
+        "It's too controlled to be a wildfire.",
+        "Someone built that fire on purpose."
+      ],
+      "choices": [
+        {
+          "text": "Investigate the smoke",
+          "nextScene": "approach_camp"
+        },
+        {
+          "text": "Observe from a distance",
+          "requires": { "perception": 3 },
+          "checkType": "hard",
+          "nextScene": "watch_camp",
+          "lockedText": "You can't find a good vantage point."
+        },
+        {
+          "text": "Avoid it entirely",
+          "nextScene": "leave_area"
+        }
+      ]
+    },
+
+    "watch_camp": {
+      "dialogue": [
+        "From a ridge overlooking the clearing, you count five survivors.",
+        "One appears injured.",
+        "Another keeps pacing around the fire, frequently checking the woods."
+      ],
+      "choices": [
+        {
+          "text": "Approach openly",
+          "nextScene": "approach_camp"
+        },
+        {
+          "text": "Study their behavior longer",
+          "requires": { "intelligence": 3 },
+          "checkType": "hard",
+          "nextScene": "notice_argument",
+          "lockedText": "You can't make sense of what they're doing."
+        }
+      ]
+    },
+
+    "notice_argument": {
+      "dialogue": [
+        "The group begins arguing.",
+        "The injured survivor points toward the road.",
+        "The others seem determined to stay put."
+      ],
+      "choices": [
+        {
+          "text": "Reveal yourself",
+          "nextScene": "approach_camp"
+        },
+        {
+          "text": "Leave before they spot you",
+          "nextScene": "leave_area"
+        }
+      ]
+    },
+
+    "approach_camp": {
+      "dialogue": [
+        "Weapons immediately turn toward you.",
+        "After a tense moment, nobody fires.",
+        "'State your business,' a woman near the fire says."
+      ],
+      "choices": [
+        {
+          "text": "Offer to help",
+          "nextScene": "their_problem"
+        },
+        {
+          "text": "Ask what happened here",
+          "nextScene": "their_problem"
+        },
+        {
+          "text": "Demand supplies",
+          "nextScene": "hostile_end"
+        }
+      ]
+    },
+
+    "their_problem": {
+      "dialogue": [
+        "'We were supposed to meet another group here.'",
+        "'They never showed.'",
+        "The injured man speaks up. 'Or maybe they did. Maybe somebody scared them off.'"
+      ],
+      "choices": [
+        {
+          "text": "Ask why he thinks that",
+          "nextScene": "accusation"
+        },
+        {
+          "text": "Suggest moving before walkers arrive",
+          "requires": { "leadership": 3 },
+          "checkType": "hard",
+          "nextScene": "convince_leave",
+          "lockedText": "They aren't interested in taking orders from you."
+        },
+        {
+          "text": "Stay out of it",
+          "nextScene": "neutral_departure"
+        }
+      ]
+    },
+
+    "accusation": {
+      "dialogue": [
+        "'Because someone keeps sneaking off at night,' the injured survivor says.",
+        "He points at the woman who first greeted you.",
+        "'Ever since then, things keep going wrong.'"
+      ],
+      "choices": [
+        {
+          "text": "Question the accused woman",
+          "nextScene": "hear_both_sides"
+        },
+        {
+          "text": "Take the accusation seriously",
+          "requires": { "perception": 4 },
+          "checkType": "hard",
+          "nextScene": "investigate_claim",
+          "lockedText": "You don't have enough evidence to judge anyone."
+        },
+        {
+          "text": "Tell them to settle it themselves",
+          "nextScene": "neutral_departure"
+        }
+      ]
+    },
+
+    "hear_both_sides": {
+      "dialogue": [
+        "The woman sighs.",
+        "'I leave because my husband was supposed to meet us here.'",
+        "'Every night I check the road hoping he's still alive.'"
+      ],
+      "choices": [
+        {
+          "text": "Believe her",
+          "nextScene": "support_woman"
+        },
+        {
+          "text": "Believe the accuser",
+          "nextScene": "support_accuser"
+        }
+      ]
+    },
+
+    "investigate_claim": {
+      "dialogue": [
+        "You inspect the edge of camp.",
+        "You find footprints leading away and returning each night.",
+        "Nothing else."
+      ],
+      "choices": [
+        {
+          "text": "Tell the group there's no evidence of betrayal",
+          "nextScene": "support_woman"
+        },
+        {
+          "text": "Say the behavior is suspicious",
+          "nextScene": "support_accuser"
+        }
+      ]
+    },
+
+    "support_woman": {
+      "dialogue": [
+        "The argument slowly cools.",
+        "Nobody seems fully convinced, but weapons lower.",
+        "For tonight at least, the group remains together."
+      ],
+      "choices": []
+    },
+
+    "support_accuser": {
+      "dialogue": [
+        "The camp fractures almost immediately.",
+        "Half the survivors leave before nightfall.",
+        "The fire burns long after the shouting stops."
+      ],
+      "choices": []
+    },
+
+    "convince_leave": {
+      "dialogue": [
+        "After a lengthy discussion, the group agrees.",
+        "They extinguish the fire and prepare to move.",
+        "'Maybe surviving means knowing when to let go,' someone mutters."
+      ],
+      "choices": []
+    },
+
+    "neutral_departure": {
+      "dialogue": [
+        "You decide this isn't your problem.",
+        "As darkness falls behind you, raised voices continue around the fire."
+      ],
+      "choices": []
+    },
+
+    "hostile_end": {
+      "dialogue": [
+        "The conversation ends instantly.",
+        "You realize you've been outnumbered the entire time.",
+        "Nobody is feeling charitable."
+      ],
+      "choices": []
+    },
+
+    "leave_area": {
+      "dialogue": [
+        "You continue down the road.",
+        "The source of the smoke remains a mystery."
+      ],
+      "choices": []
+    }
+  }
+}

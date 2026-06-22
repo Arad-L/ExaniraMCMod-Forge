@@ -1,0 +1,165 @@
+{
+  "id": "the_empty_campsite",
+  "type": "side",
+  "offlineFallback": "ignore",
+  "startScene": "discovery",
+  "scenes": {
+    "discovery": {
+      "dialogue": [
+        "You discover a recently abandoned campsite.",
+        "The fire pit is still warm.",
+        "But there are no bodies and no survivors."
+      ],
+      "choices": [
+        {
+          "text": "Search the campsite",
+          "nextScene": "search_clues"
+        },
+        {
+          "text": "Check for tracks",
+          "requires": { "survival": 3 },
+          "checkType": "hard",
+          "nextScene": "follow_tracks",
+          "lockedText": "The ground is too disturbed to read."
+        },
+        {
+          "text": "Move on",
+          "nextScene": "leave"
+        }
+      ]
+    },
+
+    "search_clues": {
+      "dialogue": [
+        "Most supplies are gone.",
+        "A half-finished meal sits beside the fire.",
+        "Whatever happened was sudden."
+      ],
+      "choices": [
+        {
+          "text": "Look for signs of violence",
+          "requires": { "perception": 4 },
+          "checkType": "hard",
+          "nextScene": "violence_clue",
+          "lockedText": "Nothing stands out."
+        },
+        {
+          "text": "Look for a direction of travel",
+          "nextScene": "follow_tracks"
+        }
+      ]
+    },
+
+    "violence_clue": {
+      "dialogue": [
+        "You find a spent shell casing near a tree.",
+        "Just one.",
+        "Not enough to explain an entire camp disappearing."
+      ],
+      "choices": [
+        {
+          "text": "Follow the tracks",
+          "nextScene": "follow_tracks"
+        }
+      ]
+    },
+
+    "follow_tracks": {
+      "dialogue": [
+        "The trail leads to a nearby farmhouse.",
+        "The front door hangs open."
+      ],
+      "choices": [
+        {
+          "text": "Enter the farmhouse",
+          "nextScene": "farmhouse"
+        },
+        {
+          "text": "Observe first",
+          "requires": { "perception": 3 },
+          "checkType": "hard",
+          "nextScene": "observe_house",
+          "lockedText": "You can't find a safe position."
+        }
+      ]
+    },
+
+    "observe_house": {
+      "dialogue": [
+        "After several minutes, you spot movement.",
+        "A survivor peeks through an upstairs window.",
+        "Then disappears."
+      ],
+      "choices": [
+        {
+          "text": "Call out peacefully",
+          "nextScene": "survivor_contact"
+        },
+        {
+          "text": "Enter anyway",
+          "nextScene": "farmhouse"
+        }
+      ]
+    },
+
+    "farmhouse": {
+      "dialogue": [
+        "Inside are several frightened survivors.",
+        "They're the missing campers.",
+        "'We thought raiders found us,' one explains.",
+        "'So we hid.'"
+      ],
+      "choices": [
+        {
+          "text": "Tell them the campsite is safe",
+          "nextScene": "return_to_camp"
+        },
+        {
+          "text": "Suggest they stay hidden",
+          "nextScene": "stay_hidden"
+        }
+      ]
+    },
+
+    "survivor_contact": {
+      "dialogue": [
+        "The survivors eventually invite you inside.",
+        "Fear, not violence, caused the disappearance."
+      ],
+      "choices": [
+        {
+          "text": "Encourage them to return",
+          "nextScene": "return_to_camp"
+        },
+        {
+          "text": "Respect their caution",
+          "nextScene": "stay_hidden"
+        }
+      ]
+    },
+
+    "return_to_camp": {
+      "dialogue": [
+        "The survivors cautiously return to their campsite.",
+        "Life goes on, at least for another day."
+      ],
+      "choices": []
+    },
+
+    "stay_hidden": {
+      "dialogue": [
+        "The farmhouse doors are secured.",
+        "The survivors choose safety over comfort."
+      ],
+      "choices": []
+    },
+
+    "leave": {
+      "dialogue": [
+        "The mystery remains unsolved.",
+        "Not every story gets an ending."
+      ],
+      "choices": []
+    }
+  }
+}

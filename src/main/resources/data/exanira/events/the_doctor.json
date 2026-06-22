@@ -1,0 +1,393 @@
+{
+  "id": "the_doctor",
+  "type": "side",
+  "offlineFallback": "ignore",
+  "startScene": "arrival",
+  "scenes": {
+    "arrival": {
+      "dialogue": [
+        "A small survivor camp has formed in the parking lot of an abandoned hardware store.",
+        "People move with purpose despite their exhaustion. Water is being boiled over a fire. Supplies are being inventoried. Children are being kept occupied with simple chores.",
+        "One name keeps coming up as you walk through the camp.",
+        "'The doctor.'",
+        "'Talk to the doctor.'",
+        "'The doctor will know what to do.'",
+        "Whoever this person is, the camp seems to place an enormous amount of trust in him."
+      ],
+      "choices": [
+        {
+          "text": "Find the doctor",
+          "nextScene": "meet_doctor"
+        },
+        {
+          "text": "Ask camp members about him",
+          "nextScene": "camp_opinions"
+        },
+        {
+          "text": "Observe the camp before getting involved",
+          "requires": { "perception": 3 },
+          "checkType": "hard",
+          "nextScene": "observe_camp",
+          "lockedText": "You can't get a good read on the camp."
+        },
+        {
+          "text": "Leave the camp",
+          "nextScene": "leave"
+        }
+      ]
+    },
+
+    "observe_camp": {
+      "dialogue": [
+        "You spend some time watching the camp from a distance.",
+        "The doctor is constantly moving between people.",
+        "Treating cuts. Checking fevers. Giving advice.",
+        "Yet something feels strange.",
+        "You never actually see him perform anything particularly advanced.",
+        "Most of what he's doing looks like basic first aid."
+      ],
+      "choices": [
+        {
+          "text": "Ask camp members about him",
+          "nextScene": "camp_opinions"
+        },
+        {
+          "text": "Speak to the doctor directly",
+          "nextScene": "meet_doctor"
+        }
+      ]
+    },
+
+    "camp_opinions": {
+      "dialogue": [
+        "You spend time speaking with different members of the camp.",
+        "An older woman insists the doctor saved her life after a wound became infected.",
+        "'Without him I'd be dead.'",
+        "A father says the doctor helped bring his son's fever down.",
+        "But a younger survivor seems less convinced.",
+        "'Maybe he's legit,' he says quietly.",
+        "'But I've never seen him do anything a first aid manual couldn't teach.'"
+      ],
+      "choices": [
+        {
+          "text": "Ask about the doctor's past",
+          "nextScene": "doctor_reputation"
+        },
+        {
+          "text": "Ask about recent patients",
+          "nextScene": "patient_stories"
+        },
+        {
+          "text": "Speak with the doctor",
+          "nextScene": "meet_doctor"
+        }
+      ]
+    },
+
+    "doctor_reputation": {
+      "dialogue": [
+        "The stories become less consistent the more people you ask.",
+        "Some claim he worked in a hospital.",
+        "Others insist he was a surgeon.",
+        "One survivor swears he used to teach medicine.",
+        "Nobody seems to know for certain.",
+        "The doctor himself appears to have never volunteered many details."
+      ],
+      "choices": [
+        {
+          "text": "Investigate further",
+          "nextScene": "meet_doctor"
+        },
+        {
+          "text": "Ask about his successes",
+          "nextScene": "patient_stories"
+        }
+      ]
+    },
+
+    "patient_stories": {
+      "dialogue": [
+        "Most people speak highly of him.",
+        "'He stopped my infection from spreading.'",
+        "'He knew exactly what medicine to use.'",
+        "'He kept my daughter alive through a fever.'",
+        "Yet every story seems to involve simple treatments.",
+        "Bandages. Cleaning wounds. Hydration.",
+        "Important work, certainly, but nothing requiring years of medical training."
+      ],
+      "choices": [
+        {
+          "text": "Speak to the doctor",
+          "nextScene": "meet_doctor"
+        },
+        {
+          "text": "Trust that he's genuine",
+          "nextScene": "help_doctor"
+        }
+      ]
+    },
+
+    "meet_doctor": {
+      "dialogue": [
+        "You find the doctor sitting beside a teenager with a badly sprained ankle.",
+        "He finishes wrapping the injury before acknowledging you.",
+        "'Sorry,' he says. 'Been a busy day.'",
+        "He looks exhausted.",
+        "There are dark circles under his eyes and dried blood on his sleeves.",
+        "'What can I do for you?'"
+      ],
+      "choices": [
+        {
+          "text": "Ask where he practiced medicine",
+          "nextScene": "question_background"
+        },
+        {
+          "text": "Offer to help around camp",
+          "nextScene": "help_doctor"
+        },
+        {
+          "text": "Watch him work for a while",
+          "requires": { "perception": 4 },
+          "checkType": "hard",
+          "nextScene": "observe_doctor",
+          "lockedText": "You can't find an opportunity."
+        }
+      ]
+    },
+
+    "observe_doctor": {
+      "dialogue": [
+        "You quietly observe him throughout the afternoon.",
+        "He's calm under pressure.",
+        "Compassionate.",
+        "Patient.",
+        "But several times he consults handwritten notes before making decisions.",
+        "At one point he hesitates when asked about medication dosages."
+      ],
+      "choices": [
+        {
+          "text": "Question his experience",
+          "nextScene": "question_background"
+        },
+        {
+          "text": "Keep your suspicions to yourself",
+          "nextScene": "help_doctor"
+        }
+      ]
+    },
+
+    "question_background": {
+      "dialogue": [
+        "'County hospital,' he answers immediately.",
+        "'Worked there for years.'",
+        "The response comes quickly.",
+        "Almost too quickly."
+      ],
+      "choices": [
+        {
+          "text": "Ask for more details",
+          "requires": { "intelligence": 3 },
+          "checkType": "hard",
+          "nextScene": "inconsistent_story",
+          "lockedText": "You aren't sure what questions to ask."
+        },
+        {
+          "text": "Study his reaction",
+          "requires": { "perception": 4 },
+          "checkType": "hard",
+          "nextScene": "inconsistent_story",
+          "lockedText": "You can't tell if he's nervous."
+        },
+        {
+          "text": "Accept the answer",
+          "nextScene": "help_doctor"
+        }
+      ]
+    },
+
+    "inconsistent_story": {
+      "dialogue": [
+        "As the conversation continues, small details begin to change.",
+        "The department he worked in changes.",
+        "The years don't quite add up.",
+        "Eventually he notices your expression.",
+        "His shoulders tense.",
+        "'Keep your voice down,' he says quietly."
+      ],
+      "choices": [
+        {
+          "text": "Hear him out",
+          "nextScene": "confession"
+        },
+        {
+          "text": "Accuse him publicly",
+          "nextScene": "public_accusation"
+        }
+      ]
+    },
+
+    "confession": {
+      "dialogue": [
+        "The doctor waits until nobody else is nearby.",
+        "For a long moment neither of you speak.",
+        "Finally he exhales.",
+        "'I'm not a doctor.'",
+        "The words come out barely above a whisper.",
+        "'I was a receptionist.'",
+        "'A medical receptionist.'",
+        "'I answered phones. Scheduled appointments. Filed paperwork.'",
+        "'When everything collapsed, people saw the scrubs and assumed.'",
+        "'The first time I corrected them.'",
+        "'The second time too.'",
+        "'Then a little girl showed up with a fever.'",
+        "'Nobody knew what to do.'",
+        "'Nobody wanted to make a decision.'",
+        "'So I did.'",
+        "He stares across the camp.",
+        "'And after that, people kept asking.'"
+      ],
+      "choices": [
+        {
+          "text": "Keep his secret",
+          "nextScene": "secret_kept"
+        },
+        {
+          "text": "Tell the camp the truth",
+          "nextScene": "public_accusation"
+        },
+        {
+          "text": "Ask why he continues the lie",
+          "nextScene": "why_continue"
+        }
+      ]
+    },
+
+    "why_continue": {
+      "dialogue": [
+        "'Because people need someone to believe in.'",
+        "'Look around.'",
+        "'They've lost homes. Families. Friends.'",
+        "'Half of them are terrified every minute they're awake.'",
+        "He pauses.",
+        "'If I tell them the truth, maybe they'll forgive me.'",
+        "'Or maybe they'll panic.'",
+        "'Maybe somebody dies because nobody trusts anyone anymore.'"
+      ],
+      "choices": [
+        {
+          "text": "Keep the secret",
+          "nextScene": "secret_kept"
+        },
+        {
+          "text": "Expose the lie",
+          "nextScene": "public_accusation"
+        }
+      ]
+    },
+
+    "secret_kept": {
+      "dialogue": [
+        "The secret remains between the two of you.",
+        "'I don't know how much longer I can keep this up,' he admits.",
+        "'Eventually somebody will need a real doctor.'",
+        "The camp carries on around you.",
+        "Children laugh near the fire.",
+        "Survivors prepare dinner.",
+        "Nobody knows the truth."
+      ],
+      "choices": [
+        {
+          "text": "Tell him to keep helping people",
+          "nextScene": "hopeful_end"
+        },
+        {
+          "text": "Tell him he should confess someday",
+          "nextScene": "honest_end"
+        }
+      ]
+    },
+
+    "public_accusation": {
+      "dialogue": [
+        "The revelation spreads through camp quickly.",
+        "Shock turns into arguments.",
+        "'You lied to us!'",
+        "'He still saved lives!'",
+        "'What if somebody dies because of him?'",
+        "'What if somebody already would have died without him?'",
+        "The camp fractures into heated debate."
+      ],
+      "choices": [
+        {
+          "text": "Defend him",
+          "nextScene": "defended_end"
+        },
+        {
+          "text": "Leave the camp to decide his fate",
+          "nextScene": "chaos_end"
+        }
+      ]
+    },
+
+    "hopeful_end": {
+      "dialogue": [
+        "'Maybe that's enough,' you tell him.",
+        "'You've helped people survive.'",
+        "For the first time all day, he smiles.",
+        "Tomorrow he'll continue pretending to be something he isn't.",
+        "But tomorrow he'll also continue helping people."
+      ],
+      "choices": []
+    },
+
+    "honest_end": {
+      "dialogue": [
+        "'You can't carry this forever,' you tell him.",
+        "He nods slowly.",
+        "'I know.'",
+        "'Maybe when things are stable.'",
+        "'Maybe then I'll tell them.'",
+        "Whether that day ever comes is another question."
+      ],
+      "choices": []
+    },
+
+    "defended_end": {
+      "dialogue": [
+        "You remind the camp that regardless of his title, he helped people.",
+        "The arguments gradually settle.",
+        "Trust has been damaged, but not destroyed.",
+        "The former receptionist remains, no longer a doctor, but still someone willing to help."
+      ],
+      "choices": []
+    },
+
+    "chaos_end": {
+      "dialogue": [
+        "You leave before the argument reaches a conclusion.",
+        "As you walk away, raised voices continue behind you.",
+        "Sometimes the truth helps people.",
+        "Sometimes it only gives them something new to fight about."
+      ],
+      "choices": []
+    },
+
+    "help_doctor": {
+      "dialogue": [
+        "You spend the day helping distribute supplies and care for survivors.",
+        "Whether the doctor is genuine or not, people are alive because someone stepped forward.",
+        "For now, that seems to be enough."
+      ],
+      "choices": []
+    },
+
+    "leave": {
+      "dialogue": [
+        "You leave the camp behind.",
+        "The doctor continues his work as you disappear down the road.",
+        "Some questions remain unanswered."
+      ],
+      "choices": []
+    }
+  }
+}

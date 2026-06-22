@@ -1,0 +1,159 @@
+{
+  "id": "the_barricaded_house",
+  "type": "side",
+  "offlineFallback": "ignore",
+  "startScene": "approach_house",
+  "scenes": {
+    "approach_house": {
+      "dialogue": [
+        "A suburban home stands out among the abandoned neighborhood.",
+        "The windows are boarded. Smoke rises from a chimney.",
+        "Someone is still living here."
+      ],
+      "choices": [
+        {
+          "text": "Knock on the front door",
+          "nextScene": "front_door"
+        },
+        {
+          "text": "Circle the house and look for another way in",
+          "requires": { "agility": 3 },
+          "checkType": "hard",
+          "nextScene": "backyard",
+          "lockedText": "You aren't confident enough to move quietly around the property."
+        },
+        {
+          "text": "Leave them alone",
+          "nextScene": "walk_away"
+        }
+      ]
+    },
+
+    "front_door": {
+      "dialogue": [
+        "A slot in the door opens.",
+        "'State your business,' a tired voice says."
+      ],
+      "choices": [
+        {
+          "text": "Offer to trade information",
+          "requires": { "leadership": 3 },
+          "checkType": "hard",
+          "nextScene": "trade_information",
+          "lockedText": "You struggle to make a convincing case."
+        },
+        {
+          "text": "Ask for food and shelter",
+          "nextScene": "ask_help"
+        },
+        {
+          "text": "Demand they open the door",
+          "nextScene": "threaten_house"
+        }
+      ]
+    },
+
+    "backyard": {
+      "dialogue": [
+        "You slip around the property.",
+        "In the backyard, you find fresh graves.",
+        "Three of them."
+      ],
+      "choices": [
+        {
+          "text": "Investigate the graves",
+          "requires": { "perception": 4 },
+          "checkType": "hard",
+          "nextScene": "grave_discovery",
+          "lockedText": "You can't make out anything useful."
+        },
+        {
+          "text": "Reveal yourself peacefully",
+          "nextScene": "front_door"
+        }
+      ]
+    },
+
+    "grave_discovery": {
+      "dialogue": [
+        "The markers are recent.",
+        "One grave is smaller than the others.",
+        "You hear quiet crying from inside the house."
+      ],
+      "choices": [
+        {
+          "text": "Approach with sympathy",
+          "nextScene": "trade_information"
+        },
+        {
+          "text": "Leave immediately",
+          "nextScene": "walk_away"
+        }
+      ]
+    },
+
+    "trade_information": {
+      "dialogue": [
+        "The homeowner eventually opens the door a few inches.",
+        "'We've lost enough people. We don't trust strangers.'",
+        "'But if you've seen a safe road north, I'll listen.'"
+      ],
+      "choices": [
+        {
+          "text": "Share everything you know",
+          "nextScene": "earned_trust"
+        },
+        {
+          "text": "Lie to gain their trust",
+          "requires": { "intelligence": 4 },
+          "checkType": "hard",
+          "nextScene": "false_trust",
+          "lockedText": "You can't think of a convincing story."
+        }
+      ]
+    },
+
+    "ask_help": {
+      "dialogue": [
+        "'We've barely got enough for ourselves.'",
+        "The slot closes.",
+        "The conversation is over."
+      ],
+      "choices": []
+    },
+
+    "threaten_house": {
+      "dialogue": [
+        "Several gun barrels appear through firing holes in the boards.",
+        "'Wrong house.'"
+      ],
+      "choices": []
+    },
+
+    "earned_trust": {
+      "dialogue": [
+        "The homeowner thanks you.",
+        "Before you leave, they hand you a small bag of supplies.",
+        "'Good luck out there.'"
+      ],
+      "choices": []
+    },
+
+    "false_trust": {
+      "dialogue": [
+        "The homeowner believes you.",
+        "As you leave, guilt follows close behind.",
+        "If they head north, they may never come back."
+      ],
+      "choices": []
+    },
+
+    "walk_away": {
+      "dialogue": [
+        "You continue down the street.",
+        "Whatever story was inside that house remains unknown."
+      ],
+      "choices": []
+    }
+  }
+}

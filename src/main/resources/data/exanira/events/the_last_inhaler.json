@@ -1,0 +1,185 @@
+{
+  "id": "the_last_inhaler",
+  "type": "side",
+  "offlineFallback": "ignore",
+  "startScene": "desperate_request",
+  "scenes": {
+    "desperate_request": {
+      "dialogue": [
+        "A survivor camp has gathered around a young woman struggling to breathe.",
+        "Each breath sounds painful.",
+        "'She's out of medication,' someone says.",
+        "'The pharmacy was picked clean weeks ago.'"
+      ],
+      "choices": [
+        {
+          "text": "Ask where they last found medicine",
+          "nextScene": "pharmacy_lead"
+        },
+        {
+          "text": "Examine her condition",
+          "requires": { "intelligence": 3 },
+          "checkType": "hard",
+          "nextScene": "medical_assessment",
+          "lockedText": "You don't know enough to help."
+        },
+        {
+          "text": "Leave the camp",
+          "nextScene": "walk_away"
+        }
+      ]
+    },
+
+    "medical_assessment": {
+      "dialogue": [
+        "You aren't a doctor, but the situation is obvious.",
+        "Without medication, she may not survive much longer."
+      ],
+      "choices": [
+        {
+          "text": "Ask where medicine might still be found",
+          "nextScene": "pharmacy_lead"
+        }
+      ]
+    },
+
+    "pharmacy_lead": {
+      "dialogue": [
+        "'There was an inhaler at a nearby house,' a survivor says.",
+        "'At least that's what we heard.'",
+        "'Problem is another family lives there now.'"
+      ],
+      "choices": [
+        {
+          "text": "Visit the occupied house",
+          "nextScene": "occupied_house"
+        },
+        {
+          "text": "Suggest looking elsewhere",
+          "requires": { "survival": 3 },
+          "checkType": "hard",
+          "nextScene": "alternative_search",
+          "lockedText": "You don't know where else to begin."
+        }
+      ]
+    },
+
+    "occupied_house": {
+      "dialogue": [
+        "A family answers through a chained door.",
+        "They're frightened but armed.",
+        "When asked about medicine, their expressions change."
+      ],
+      "choices": [
+        {
+          "text": "Explain the situation honestly",
+          "nextScene": "honest_request"
+        },
+        {
+          "text": "Offer to trade",
+          "requires": { "leadership": 3 },
+          "checkType": "hard",
+          "nextScene": "trade_offer",
+          "lockedText": "You don't have enough to bargain with."
+        },
+        {
+          "text": "Demand the inhaler",
+          "nextScene": "threaten_family"
+        }
+      ]
+    },
+
+    "honest_request": {
+      "dialogue": [
+        "'We know exactly who you're talking about,' the father says.",
+        "'But my son needs that inhaler too.'",
+        "A teenager coughs from inside the house."
+      ],
+      "choices": [
+        {
+          "text": "Ask them to share it",
+          "nextScene": "share_solution"
+        },
+        {
+          "text": "Give up and leave",
+          "nextScene": "empty_handed"
+        }
+      ]
+    },
+
+    "trade_offer": {
+      "dialogue": [
+        "After a long discussion, the family considers it.",
+        "'Maybe we can work something out.'"
+      ],
+      "choices": [
+        {
+          "text": "Accept a shared arrangement",
+          "nextScene": "share_solution"
+        },
+        {
+          "text": "Push for the inhaler outright",
+          "nextScene": "threaten_family"
+        }
+      ]
+    },
+
+    "alternative_search": {
+      "dialogue": [
+        "You spend hours checking nearby homes.",
+        "Most are empty.",
+        "One medicine cabinet contains an expired inhaler."
+      ],
+      "choices": [
+        {
+          "text": "Bring back the expired inhaler",
+          "nextScene": "uncertain_help"
+        }
+      ]
+    },
+
+    "share_solution": {
+      "dialogue": [
+        "Neither side is happy.",
+        "Neither side gets everything they want.",
+        "But both survivors have a chance now."
+      ],
+      "choices": []
+    },
+
+    "uncertain_help": {
+      "dialogue": [
+        "The camp accepts the inhaler.",
+        "Whether it works well enough is another question.",
+        "At least you tried."
+      ],
+      "choices": []
+    },
+
+    "threaten_family": {
+      "dialogue": [
+        "The door slams shut.",
+        "Several weapons appear behind nearby windows.",
+        "The conversation is over."
+      ],
+      "choices": []
+    },
+
+    "empty_handed": {
+      "dialogue": [
+        "You return with nothing.",
+        "The camp understands.",
+        "That doesn't make it easier."
+      ],
+      "choices": []
+    },
+
+    "walk_away": {
+      "dialogue": [
+        "There are too many people in need these days.",
+        "You continue down the road."
+      ],
+      "choices": []
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "itemGroup.exanira": "Exanira Tab",
+  "block.exanira.example_block": "Example Block",
+  "item.exanira.example_item": "Example Item",
+
+  "exanira.configuration.title": "Exanira Configs",
+  "exanira.configuration.section.exanira.common.toml": "Exanira Configs",
+  "exanira.configuration.section.exanira.common.toml.title": "Exanira Configs",
+  "exanira.configuration.items": "Item List",
+  "exanira.configuration.logDirtBlock": "Log Dirt Block",
+  "exanira.configuration.magicNumberIntroduction": "Magic Number Text",
+  "exanira.configuration.magicNumber": "Magic Number",
+
+  "gui.exanira.character_sheet": "Character Sheet",
+  "gui.exanira.character_creation": "Character Creation",
+  "gui.exanira.character_creation.begin": "Begin Your Story",
+  "gui.exanira.event": "Incoming Transmission",
+  "item.exanira.radio": "Radio",
+  "key.exanira.character_sheet": "Open Character Sheet",
+  "key.categories.exanira": "Survival Event Engine"
+}

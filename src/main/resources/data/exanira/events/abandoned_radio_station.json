@@ -1,0 +1,108 @@
+{
+  "id": "abandoned_radio_station",
+  "type": "side",
+  "offlineFallback": "ignore",
+  "startScene": "first_contact",
+  "scenes": {
+    "first_contact": {
+      "dialogue": [
+        "Static crackles across your radio...",
+        "A weak voice cuts through the noise. 'Is... anyone out there? Please, I'm trapped.'"
+      ],
+      "choices": [
+        {
+          "text": "Respond to the signal",
+          "requires": { "perception": 3 },
+          "checkType": "hard",
+          "nextScene": "locate_survivor",
+          "lockedText": "You can't make out enough detail to know if this is safe."
+        },
+        {
+          "text": "Boost the signal to trace the source",
+          "requires": { "intelligence": 4 },
+          "checkType": "hard",
+          "nextScene": "trace_source",
+          "lockedText": "You don't have the technical knowledge to boost the signal."
+        },
+        {
+          "text": "Ignore it and keep moving",
+          "nextScene": "ignored"
+        }
+      ]
+    },
+    "locate_survivor": {
+      "dialogue": [
+        "The voice gains clarity. 'Oh thank god. I'm in the old warehouse on the east road.'",
+        "'Three days. I have supplies. But I can hear them outside the door.'"
+      ],
+      "choices": [
+        {
+          "text": "Tell them to stay quiet and sit tight",
+          "nextScene": "plan_quiet"
+        },
+        {
+          "text": "Teach them a distraction tactic",
+          "requires": { "survival": 3 },
+          "checkType": "hard",
+          "nextScene": "plan_distraction",
+          "lockedText": "You don't have the wilderness knowledge to come up with anything useful."
+        },
+        {
+          "text": "You're on your own. I can't risk it.",
+          "nextScene": "abandoned_survivor"
+        }
+      ]
+    },
+    "trace_source": {
+      "dialogue": [
+        "The signal resolves to coordinates — a warehouse two kilometres east.",
+        "The broadcast loops on repeat. They may not even know you heard them."
+      ],
+      "choices": [
+        {
+          "text": "Mark the location and head there",
+          "nextScene": "plan_quiet"
+        },
+        {
+          "text": "Broadcast back to confirm someone is alive",
+          "requires": { "leadership": 3 },
+          "checkType": "hard",
+          "nextScene": "locate_survivor",
+          "lockedText": "You hesitate — you've never been good at knowing what to say."
+        },
+        {
+          "text": "Too risky. Discard the coordinates.",
+          "nextScene": "abandoned_survivor"
+        }
+      ]
+    },
+    "plan_quiet": {
+      "dialogue": [
+        "'Okay. Okay, I can do that.' A long silence follows.",
+        "'Please hurry. I don't know how long the battery lasts.'"
+      ],
+      "choices": []
+    },
+    "plan_distraction": {
+      "dialogue": [
+        "You walk them through it — noise from the far side of the building, timed movement.",
+        "'That... might actually work. I'll try it. Thank you.' The channel goes quiet."
+      ],
+      "choices": []
+    },
+    "abandoned_survivor": {
+      "dialogue": [
+        "You switch off the frequency.",
+        "For a moment, you hear them calling out again. Then nothing."
+      ],
+      "choices": []
+    },
+    "ignored": {
+      "dialogue": [
+        "You turn down the volume. It wasn't your problem to begin with.",
+        "Probably."
+      ],
+      "choices": []
+    }
+  }
+}
