@@ -25,7 +25,7 @@
 | 3.5 | Party formation via invite | 🟢 Complete | `/exanira event invite <player>` and `/exanira event accept`; invites sent only from start scene; join allowed only at start scene; duplicate invite to same instance blocked |
 | 3.6 | Server-side party vote | 🟢 Complete | `ActiveEvent` collects votes per scene; `allVoted()` + `resolveMajorityChoice()` triggers `applyChoice()`; stat gate checked before vote recorded |
 | 3.7 | Vote state UI (EventScreen) | 🟢 Complete | `PartyVoteStatePacket` registered and sent on all vote updates; vote counts shown right-aligned on choice buttons; selected vote highlight persists from server-authoritative `localChoiceIndex` |
-| 3.8 | Logout mid-party handling | 🔴 Not started | When a party member disconnects, auto-submit their vote using the event's `offlineFallback` strategy; remove from participants so `allVoted()` recalculates |
+| 3.8 | Logout mid-party handling | 🔴 Not started | When a party member disconnects, auto-submit their vote using the event's `offlineFallback` strategy IF the other party members have ALL voted starting a five minute timer and it passed; remove from participants so `allVoted()` recalculates |
 | 3.9 | End-to-end multiplayer test | 🔴 Not started | Two `runClient` instances; same event instance; vote on a choice; verify both clients advance to the same scene; test mid-event disconnect |
 
 ---
@@ -140,7 +140,7 @@ Stored via `ExaniraCapabilityProvider` (implements `ICapabilitySerializable`) in
 ## Phase 4 Preview — Main Story System
 
 - Global story flags (`SavedData` — world-persistent, survives server restart)
-- Main story events: all online players force-joined automatically
-- 5-minute accept timer; reschedule on timeout / mass decline
-- **Open edge case**: if a player holds a side event lock when a main story event fires — behaviour not yet defined. Must be resolved before Phase 4 implementation begins.
+- Main story events are manually initiated.
+- Players are invited or join voluntarily.
+- Standard event lock rules apply.
 - **Forge 1.18.2 note**: `SavedData` API is available and stable in 1.18.2; no migration needed for Phase 4.

@@ -25,10 +25,11 @@ Three core subsystems:
 ## Event Types
 
 ### Main Story Events (GLOBAL LOCKED)
-- Only one active at a time
-- All online players are **forced into the event automatically** — no opt-in prompt
-- A **5-minute accept window** is shown. If not all players accept within 5 minutes (or all decline), the event is dismissed and rescheduled to attempt again later
-- Blocks other main story progression while active
+- Represent the primary campaign storyline
+- Must be manually started by players
+- Uses the same event participation model as other events
+- Blocks progression to later main story events until resolved
+- Main story events are a narrative classification rather than a separate runtime system. They use the same event instance, party, voting, persistence, invitation, and locking infrastructure as all other events. Their primary distinction is that they advance global campaign state.
 
 ### Side Events (PARALLEL)
 - Per-player or per-temporary-party
@@ -48,7 +49,7 @@ Three core subsystems:
 tick →
   check triggers →
     spawn event →
-      assign players (or force-join for main story) →
+      players join or are invited →
         wait for input →
           resolve outcome (hard gate skill checks) →
             update state →
@@ -72,10 +73,6 @@ The `EventQueueManager` owns:
 - Player-to-event assignment map (`Map<UUID, String>`)
 - Pending invitation map (`Map<UUID, String>` — stores invitee UUID → instanceKey)
 - The event scheduling queue
-- The 5-minute main story accept timer
-
-### Phase 4 Edge Case (Unresolved)
-> If a player already holds a side event lock when a main story event fires, behavior is not yet defined. Options: side event auto-resolves, pauses, or main story waits until lock clears. Must be decided before Phase 4 implementation.
 
 ---
 
@@ -253,11 +250,10 @@ Event NPCs will use a **pre-existing NPC mod** compatible with Forge 1.18.2 that
 - Stat requirement displayed next to locked choices (`[PER 3+]` prefix shown on all choices)
 - Hover tooltip on locked buttons showing `lockedText` (implemented via `Screen.renderTooltip()`)
 - Party vote UI — vote counts shown right-aligned on each choice button; selected choice highlighted in blue
-- Main story 5-minute accept countdown display (Phase 4)
 
 ## Event Locking
-- Player receives an **event lock** on joining any side event
-- Lock prevents joining other side events
+- Player receives an **event lock** on joining any event
+- Lock prevents joining another event while the current event is active
 - Lock is released on event resolution (success, failure, or player logout/auto-resolve)
 
 ---
@@ -309,9 +305,9 @@ Event NPCs will use a **pre-existing NPC mod** compatible with Forge 1.18.2 that
 
 ## Phase 4 — Main Story System
 - [ ] Global story flags (`SavedData` — world-persistent)
-- [ ] Main story events: all online players force-joined automatically
-- [ ] 5-minute accept timer; reschedule on timeout / mass decline
-- [ ] Resolve Phase 4 edge case: side event lock vs. main story force-join
+- [ ] Main story event progression system
+- [ ] Main story event availability/unlock tracking
+- [ ] Main story event integration with campaign state
 
 ## Phase 5 — Horde Director
 - [ ] Spawn pressure director
