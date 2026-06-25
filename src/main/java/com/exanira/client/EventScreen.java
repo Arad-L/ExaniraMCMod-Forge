@@ -81,7 +81,7 @@ public class EventScreen extends Screen {
         int btnStartY = panelY + DIALOGUE_H + PAD;
 
         if (choices.isEmpty()) {
-            Button continueBtn = new Button(
+            Button continueBtn = new ExaniraButton(
                     panelX + PAD, btnStartY, btnW, BUTTON_H,
                     new TextComponent("[ Continue ]"),
                     b -> onChoiceClicked(-1)
@@ -129,10 +129,15 @@ public class EventScreen extends Screen {
         renderDialogue(poseStack);
         super.render(poseStack, mouseX, mouseY, partialTick);
 
-        // Render tooltip for hovered locked-choice buttons (replaces 1.19+ Tooltip.create())
+        // Render tooltip for hovered locked-choice buttons.
+        // Cannot use btn.isMouseOver() here because AbstractWidget.isMouseOver() returns
+        // false when this.active == false (locked buttons are inactive), so we check
+        // the mouse bounds manually instead.
         for (EventChoiceButton btn : choiceButtons) {
             String tip = btn.getLockedTooltip();
-            if (tip != null && btn.isMouseOver(mouseX, mouseY)) {
+            if (tip != null
+                    && mouseX >= btn.x && mouseX < btn.x + (PANEL_W - PAD * 2)
+                    && mouseY >= btn.y && mouseY < btn.y + BUTTON_H) {
                 renderTooltip(poseStack, new TextComponent(tip), mouseX, mouseY);
                 break;
             }

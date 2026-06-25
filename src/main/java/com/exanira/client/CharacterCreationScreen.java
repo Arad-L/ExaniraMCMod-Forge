@@ -80,7 +80,7 @@ public class CharacterCreationScreen extends Screen {
             int row = i / 2;
             int x = startX + col * (btnW + colGap);
             int y = startY + row * (btnH + btnGap);
-            addRenderableWidget(new Button(x, y, btnW, btnH,
+            addRenderableWidget(new ExaniraButton(x, y, btnW, btnH,
                     new TextComponent(profs[i].displayName()),
                     btn -> selectProfession(idx)));
         }
@@ -94,7 +94,7 @@ public class CharacterCreationScreen extends Screen {
         List<LifestyleOption> opts = q.options();
         for (int i = 0; i < opts.size(); i++) {
             final int optIdx = i;
-            addRenderableWidget(new Button(startX, startY + i * (btnH + btnGap), btnW, btnH,
+            addRenderableWidget(new ExaniraButton(startX, startY + i * (btnH + btnGap), btnW, btnH,
                     new TextComponent(opts.get(i).buttonText()),
                     btn -> selectLifestyle(optIdx)));
         }
@@ -102,7 +102,7 @@ public class CharacterCreationScreen extends Screen {
 
     private void addConfirmButton(int bx, int by) {
         int btnW = 160, btnH = 24;
-        addRenderableWidget(new Button(
+        addRenderableWidget(new ExaniraButton(
                 bx + (BG_W - btnW) / 2, by + 168, btnW, btnH,
                 new TranslatableComponent("gui.exanira.character_creation.begin"),
                 btn -> confirm()));
