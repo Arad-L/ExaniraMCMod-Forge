@@ -7,6 +7,7 @@ import com.exanira.handlers.CharacterCreationHandler;
 import com.exanira.handlers.EventChoiceHandler;
 import com.exanira.handlers.PlayerCapabilityHandler;
 import com.exanira.handlers.PlayerLoginHandler;
+import com.exanira.handlers.PlayerLogoutHandler;
 import com.exanira.item.ExaniraItems;
 import com.exanira.network.CharacterCreationSubmitPacket;
 import com.exanira.network.CharacterSheetSyncPacket;
@@ -42,6 +43,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
@@ -73,7 +75,8 @@ public class ExaniraMod {
         ExaniraItems.ITEMS.register(modEventBus);
 
         // 1.21.1: NeoForge.EVENT_BUS.register(PlayerLoginHandler.class);
-        MinecraftForge.EVENT_BUS.register(PlayerLoginHandler.class); // FORGE 1.18.2 REPLACEMENT
+MinecraftForge.EVENT_BUS.register(PlayerLoginHandler.class); // FORGE 1.18.2 REPLACEMENT
+        MinecraftForge.EVENT_BUS.register(PlayerLogoutHandler.class);
         MinecraftForge.EVENT_BUS.register(PlayerCapabilityHandler.class);
 
         // 1.21.1: modEventBus.addListener(ExaniraMod::onRegisterPayloadHandlers);
@@ -87,7 +90,7 @@ public class ExaniraMod {
                 ExaniraCommands.register(e.getDispatcher())
         ); // FORGE 1.18.2 REPLACEMENT
 
-        // SAFE shutdown handling (FIXED)
+// SAFE shutdown handling (FIXED)
         // 1.21.1: NeoForge.EVENT_BUS.addListener((ServerStoppedEvent e) -> {
         MinecraftForge.EVENT_BUS.addListener((ServerStoppedEvent e) -> { // FORGE 1.18.2 REPLACEMENT
             if (e.getServer() != null) {
@@ -95,6 +98,20 @@ public class ExaniraMod {
             } else {
                 // fallback safety wipe (should rarely happen)
                 EventQueueManager.INSTANCE.clear();
+            }
+        });
+        
+// Add server start handler to restore events from save data
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) -> {
+            if (e.getServer() != null) {
+                EventQueueManager.INSTANCE.restoreEventsFromSave();
+            }
+        });
+
+        // Tick handler: checks abandonment grace-period timers once per second.
+        MinecraftForge.EVENT_BUS.addListener((TickEvent.ServerTickEvent e) -> {
+            if (e.phase == TickEvent.Phase.END) {
+                EventQueueManager.INSTANCE.checkAllEventsForExpiredAbandonments();
             }
         });
 

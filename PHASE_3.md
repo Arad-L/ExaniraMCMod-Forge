@@ -25,7 +25,7 @@
 | 3.5 | Party formation via invite | 🟢 Complete | `/exanira event invite <player>` and `/exanira event accept`; invites sent only from start scene; join allowed only at start scene; duplicate invite to same instance blocked |
 | 3.6 | Server-side party vote | 🟢 Complete | `ActiveEvent` collects votes per scene; `allVoted()` + `resolveMajorityChoice()` triggers `applyChoice()`; stat gate checked before vote recorded |
 | 3.7 | Vote state UI (EventScreen) | 🟢 Complete | `PartyVoteStatePacket` registered and sent on all vote updates; vote counts shown right-aligned on choice buttons; selected vote highlight persists from server-authoritative `localChoiceIndex` |
-| 3.8 | Logout mid-party handling | 🔴 Not started | When a party member disconnects, auto-submit their vote using the event's `offlineFallback` strategy IF the other party members have ALL voted starting a five minute timer and it passed; remove from participants so `allVoted()` recalculates |
+| 3.8 | Logout mid-party handling | 🔴 Not started | When a party member disconnects, auto-submit their vote using the event's `offlineFallback` strategy IF the other party members have ALL voted starting a five minute timer and it passed; remove from participants so `allVoted()` recalculates. Huge issue: Currently, if the server shuts down during the event it does not save the votes and the party itself is also dissipated |
 | 3.9 | End-to-end multiplayer test | 🔴 Not started | Two `runClient` instances; same event instance; vote on a choice; verify both clients advance to the same scene; test mid-event disconnect |
 
 ---

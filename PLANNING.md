@@ -308,6 +308,7 @@ Event NPCs will use a **pre-existing NPC mod** compatible with Forge 1.18.2 that
 - [ ] Main story event progression system
 - [ ] Main story event availability/unlock tracking
 - [ ] Main story event integration with campaign state
+- [ ] New menu accessible through the radio (we will discuss how), includes completed side events and a score for how you did, a main quest section showing your progress and what's left, and a party management page that allows you to invite players and see who has not voted or is offline in the party (including the abandonment timer)
 
 ## Phase 5 — Horde Director
 - [ ] Spawn pressure director

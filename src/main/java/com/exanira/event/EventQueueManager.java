@@ -33,6 +33,9 @@ public class EventQueueManager {
     private final Map<UUID, String>        playerToEvent     = new ConcurrentHashMap<>();
     private final Map<UUID, String>        pendingInvitations = new ConcurrentHashMap<>();
     private Map<String, EventDefinition>   loadedEvents      = Map.of();
+    
+    // For persistence
+    private ActiveEventSavedData savedEventData;
 
     private EventQueueManager() {}
 
@@ -91,6 +94,7 @@ public class EventQueueManager {
         );
 
         setRadioActive(player, true);
+        persist(instanceKey, active);      // <-- save event creation immediately
         broadcastScene(instanceKey, active, scene);
         return true;
     }
@@ -110,11 +114,20 @@ public class EventQueueManager {
         active.addParticipant(id);
         playerToEvent.put(id, instanceKey);
 
+        // A new participant who hasn't voted yet invalidates the "all connected voted" condition.
+        // Cancel all per-player grace-period timers.
+        if (active.hasAnyAbandonmentTimer()) {
+            active.cancelAllAbandonmentTimers();
+            broadcastToParty(active, new TextComponent("A new player has joined the event. All abandonment timers have been cancelled.")
+                    .withStyle(ChatFormatting.GREEN));
+        }
+
         EventScene scene = active.currentScene();
         if (scene != null) {
             PendingEventCapability.get(player).ifPresent(p ->
                     p.set(instanceKey, active.definition().id(), active.currentSceneId())
             );
+            persist(instanceKey, active);  // <-- save participant addition immediately
             sendScene(player, instanceKey, scene);
             setRadioActive(player, true);
         }
@@ -166,6 +179,16 @@ public class EventQueueManager {
             }
 
             active.recordVote(playerId, choiceIndex);
+            persist(instanceKey, active);  // <-- save vote immediately
+
+            // Start individual grace-period timers for disconnected players who haven't voted,
+            // now that all connected participants have cast their votes.
+            Set<UUID> newTimers = active.startTimersForEligibleDisconnected();
+            if (!newTimers.isEmpty()) {
+                persist(instanceKey, active);
+                broadcastToParty(active, new TextComponent("All online party members have voted. Disconnected member(s) have 5 minutes to return or the event will continue without them.")
+                        .withStyle(ChatFormatting.YELLOW));
+            }
 
             // Broadcast vote state to all participants
             List<PartyVoteStatePacket.VoteData> voteData = new ArrayList<>();
@@ -243,6 +266,7 @@ public class EventQueueManager {
                 return;
             }
             active.setCurrentScene(choice.nextScene());
+            persist(instanceKey, active);  // <-- save scene change before broadcast
             broadcastScene(instanceKey, active, next);
         } else {
             active.markResolved();
@@ -272,9 +296,12 @@ public class EventQueueManager {
 
     // ───────────────────────── END EVENT ────────────────────────────────────
 
-    private void endEvent(String instanceKey, String nextEventId) {
+private void endEvent(String instanceKey, String nextEventId) {
         ActiveEvent active = activeEvents.remove(instanceKey);
         if (active == null) return;
+
+        // Event is finished — remove from persistent storage so it is not restored on restart.
+        removeSaved(instanceKey);
 
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         UUID instigatorId = active.participants().isEmpty() ? null
@@ -316,6 +343,9 @@ public class EventQueueManager {
             String instanceKey = entry.getKey();
             ActiveEvent active = entry.getValue();
 
+            // Persist state before shutdown so the event can be restored on next start.
+            persist(instanceKey, active);
+
             for (UUID id : active.participants()) {
                 ServerPlayer player = server.getPlayerList().getPlayer(id);
                 if (player != null) {
@@ -349,6 +379,7 @@ public class EventQueueManager {
                     sendScene(player, instanceKey, scene);
                     setRadioActive(player, true);
                 }
+                markPlayerReconnected(id); // handles disconnectedParticipants, timer, messages
                 return;
             }
             playerToEvent.remove(id); // stale entry
@@ -397,17 +428,28 @@ public class EventQueueManager {
 
         ActiveEvent active = activeEvents.get(restoredKey);
         if (active == null) {
-            active = new ActiveEvent(def, id);
-            active.setCurrentScene(sceneId);
-            activeEvents.put(restoredKey, active);
-        } else {
-            active.addParticipant(id);
+            // Event is no longer running — clear the stale capability so the player
+            // is not stuck in a ghost event on every future login.
+            LOGGER.info("[Exanira] Event '{}' no longer active for reconnecting player {} — clearing stale capability",
+                    restoredKey, player.getName().getString());
+            pending.clear();
+            setRadioActive(player, false);
+            return;
+        }
+        if (!active.participants().contains(id)) {
+            // Player was removed from this event (abandoned while offline) — discard
+            // the stale capability so they cannot get stuck or rejoin.
+            LOGGER.info("[Exanira] Player {} is not a participant in event '{}' (abandoned while offline) — clearing capability",
+                    player.getName().getString(), restoredKey);
+            pending.clear();
+            setRadioActive(player, false);
+            return;
         }
 
         playerToEvent.put(id, restoredKey);
         sendScene(player, restoredKey, scene);
         setRadioActive(player, true);
-        LOGGER.info("[Exanira] Reconstructed event '{}' (scene: '{}') for reconnecting player {}",
+        LOGGER.info("[Exanira] Restored event '{}' (scene: '{}') for reconnecting player {}",
                 def.id(), sceneId, player.getName().getString());
     }
 
@@ -502,11 +544,100 @@ public class EventQueueManager {
         return playerToEvent.containsKey(playerId);
     }
 
-    public Optional<ActiveEvent> getActiveEvent(String instanceKey) {
+public Optional<ActiveEvent> getActiveEvent(String instanceKey) {
         return Optional.ofNullable(activeEvents.get(instanceKey));
     }
+    
+// ───────────────────────── PERSISTENCE HELPERS ──────────────────────────
 
-    public boolean forceStopEvent(ServerPlayer player) {
+    /** Snapshot the given event into SavedData immediately (marks dirty). */
+    private void persist(String instanceKey, ActiveEvent active) {
+        if (savedEventData == null) {
+            MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+            if (server == null) return;
+            savedEventData = ActiveEventSavedData.getOrCreate(server);
+        }
+        savedEventData.saveActiveEvent(instanceKey, new ActiveEventSavedData.ActiveEventState(
+                active.definition().id(),
+                instanceKey,
+                active.currentSceneId(),
+                active.participants(),
+                active.disconnectedParticipants(),
+                active.votes(),
+                active.playerAbandonmentTimers(),
+                active.isResolved()
+        ));
+    }
+
+    /** Remove a finished/cancelled event from SavedData so it is not restored. */
+    private void removeSaved(String instanceKey) {
+        if (savedEventData == null) {
+            MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+            if (server == null) return;
+            savedEventData = ActiveEventSavedData.getOrCreate(server);
+        }
+        savedEventData.removeActiveEvent(instanceKey);
+    }
+
+    /**
+     * Rebuild in-memory event state from SavedData after a server restart.
+     * Must be called after resource loading so {@link #loadedEvents} is populated.
+     */
+    public void restoreEventsFromSave() {
+        if (savedEventData == null) {
+            MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+            if (server != null) {
+                savedEventData = ActiveEventSavedData.getOrCreate(server);
+            } else {
+                return;
+            }
+        }
+
+        int restored = 0;
+        for (String instanceKey : new ArrayList<>(savedEventData.getAllInstanceKeys())) {
+            ActiveEventSavedData.ActiveEventState state = savedEventData.get(instanceKey).orElse(null);
+            if (state == null) continue;
+
+            // Discard already-resolved entries that were somehow not cleaned up.
+            if (state.resolved()) {
+                savedEventData.removeActiveEvent(instanceKey);
+                continue;
+            }
+
+            EventDefinition def = loadedEvents.get(state.eventId());
+            if (def == null) {
+                LOGGER.warn("[Exanira] Saved event '{}' references unknown definition '{}' \u2014 removing",
+                        instanceKey, state.eventId());
+                savedEventData.removeActiveEvent(instanceKey);
+                continue;
+            }
+
+            // Fall back to start scene if the saved scene no longer exists.
+            String sceneId = state.currentSceneId();
+            if (def.scenes().get(sceneId) == null) {
+                LOGGER.warn("[Exanira] Scene '{}' not found in '{}' \u2014 resetting to start scene",
+                        sceneId, def.id());
+                sceneId = def.startScene();
+            }
+
+            ActiveEvent active = new ActiveEvent(
+                    def, sceneId,
+                    state.participants(), state.votes(),
+                    state.disconnectedParticipants(),
+                    state.playerAbandonmentTimers(), false);
+
+            activeEvents.put(instanceKey, active);
+            for (UUID participantId : state.participants()) {
+                playerToEvent.put(participantId, instanceKey);
+            }
+            restored++;
+            LOGGER.info("[Exanira] Restored event '{}' (scene: '{}', {} participant(s))",
+                    def.id(), sceneId, state.participants().size());
+        }
+        LOGGER.info("[Exanira] Restored {} active event(s) from SavedData", restored);
+    }
+
+public boolean forceStopEvent(ServerPlayer player) {
         UUID playerId = player.getUUID();
         String instanceKey = playerToEvent.get(playerId);
         if (instanceKey == null) return false;
@@ -533,5 +664,98 @@ public class EventQueueManager {
             }
         }
         return true;
+    }
+    
+    /**
+     * Mark a player as disconnected from any active events they're participating in
+     */
+public void markPlayerDisconnected(UUID playerId) {
+        String instanceKey = playerToEvent.get(playerId);
+        if (instanceKey != null) {
+            ActiveEvent active = activeEvents.get(instanceKey);
+            if (active != null && !active.isResolved()) {
+                active.markPlayerDisconnected(playerId);
+
+                // Start the grace-period for this player (and any others without a timer yet)
+                // if all remaining connected participants have already voted.
+                Set<UUID> newTimers = active.startTimersForEligibleDisconnected();
+                if (!newTimers.isEmpty()) {
+                    broadcastToParty(active, new TextComponent("All online party members have voted. Disconnected member(s) have 5 minutes to return or the event will continue without them.")
+                            .withStyle(ChatFormatting.YELLOW));
+                    LOGGER.info("[Exanira] Started abandonment timers for {} player(s) in event {}",
+                               newTimers.size(), instanceKey);
+                }
+
+                persist(instanceKey, active);  // <-- save disconnect + optional timer start
+            }
+        }
+    }
+    
+    /**
+     * Check all events for expired abandonments
+     */
+    public void checkAllEventsForExpiredAbandonments() {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        for (String instanceKey : new ArrayList<>(activeEvents.keySet())) {
+            ActiveEvent active = activeEvents.get(instanceKey);
+            if (active == null || active.isResolved()) continue;
+            if (!active.hasAnyAbandonmentTimer()) continue;
+
+            Set<UUID> abandoned = active.checkAndResolveExpiredAbandonments();
+            persist(instanceKey, active);
+
+            // Fully remove abandoned players from both server and client.
+            for (UUID abandonedId : abandoned) {
+                playerToEvent.remove(abandonedId);   // prevent resync re-adding them
+                if (server != null) {
+                    ServerPlayer p = server.getPlayerList().getPlayer(abandonedId);
+                    if (p != null) {
+                        // Player is still online — close their screen, clear state, deactivate radio.
+                        PendingEventCapability.get(p).ifPresent(PendingEventAttachment::clear);
+                        setRadioActive(p, false);
+                        ExaniraMod.CHANNEL.send(
+                                PacketDistributor.PLAYER.with(() -> p),
+                                new EventEndPacket(instanceKey)
+                        );
+                        LOGGER.info("[Exanira] Sent EventEndPacket to abandoned online player {} in event {}",
+                                abandonedId, instanceKey);
+                    }
+                    // If the player is offline, their PendingEventCapability is cleared when they
+                    // reconnect via the guard in resyncPlayerIfMidEvent (participants check).
+                }
+            }
+
+            // If fallback votes now satisfy all remaining participants, advance the event.
+            if (!active.isResolved() && active.allVoted()) {
+                int choice = active.resolveMajorityChoice();
+                broadcastToParty(active, new TextComponent("Disconnected player(s) timed out. Proceeding with party vote.")
+                        .withStyle(ChatFormatting.YELLOW));
+                applyChoice(instanceKey, active, active.definition(), choice);
+            }
+        }
+    }
+    
+    /**
+     * Mark a player as reconnected to any active events they're participating in
+     */
+    public void markPlayerReconnected(UUID playerId) {
+        String instanceKey = playerToEvent.get(playerId);
+        if (instanceKey == null) return;
+        ActiveEvent active = activeEvents.get(instanceKey);
+        if (active == null || active.isResolved()) return;
+
+        // Removes from disconnectedParticipants AND cancels their individual timer.
+        boolean wasDisconnected = active.markPlayerReconnected(playerId);
+        if (!wasDisconnected) return;
+
+        LOGGER.info("[Exanira] Player {} reconnected to event {}", playerId, instanceKey);
+
+        // Only announce when every disconnected player is back — no partial messages.
+        if (active.disconnectedParticipants().isEmpty()) {
+            broadcastToParty(active, new TextComponent("All party members have returned! The event continues.")
+                    .withStyle(ChatFormatting.GREEN));
+        }
+
+        persist(instanceKey, active);
     }
 }
