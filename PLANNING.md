@@ -16,20 +16,23 @@ Three core subsystems:
 
 ## State Model
 
-- **Global Campaign State (Server-wide)** — main story progression, world flags (cities fallen, NPC alive/dead, etc.)
-- **Party State** — everyone participating in the same active event forms a **temporary party** for the duration of that event only. No persistent party system.
+All story state is **per-player**. There is no global campaign state. Each player and party progresses through the world entirely at their own pace — no player can spoil the story for another. The instance system generates each player's view of a location from their individual history (see Instance System).
+
+- **Personal Progression (Per-Player)** — season, which main and side events this player has completed, which chapter they are currently on. Stored in `CharacterSheet` capability (`currentSeason: int`, `completedMainEvents: Set<String>`, `completedSideEvents`, `witnessedMainEvents: Set<String>`).
+- **Personal Choices (Per-Player)** — outcomes from events this player participated in: NPCs they saved or got killed, paths they took. Determines NPC and object states within their location instance. Stored in `CharacterSheet` capability (`personalFlags: Map<String,Boolean>`).
+- **Party State** — everyone participating in the same active event forms a **temporary party** for the duration of that event only. Location instances are determined by each player's individual progression and choices. Two players whose state matches (same decisions, same campaign chapter) can share an instance; players whose state differs each enter the instance matching their own experience. Parties are for shared event decisions only. No persistent party system.
 - **Player State** — character sheet, stats, personal flags/backstory consequences
 
 ---
 
 ## Event Types
 
-### Main Story Events (GLOBAL LOCKED)
+### Main Story Events (PER-PLAYER)
 - Represent the primary campaign storyline
 - Must be manually started by players
 - Uses the same event participation model as other events
-- Blocks progression to later main story events until resolved
-- Main story events are a narrative classification rather than a separate runtime system. They use the same event instance, party, voting, persistence, invitation, and locking infrastructure as all other events. Their primary distinction is that they advance global campaign state.
+- Each player/party runs their own independent instance; multiple players can be at different points of the main story simultaneously on the same server
+- Main story events are a narrative classification rather than a separate runtime system. They use the same event instance, party, voting, persistence, invitation, and locking infrastructure as all other events. Their primary distinction is that they advance the player's personal story progression (`completedMainEvents`) and season (`currentSeason`).
 
 ### Side Events (PARALLEL)
 - Per-player or per-temporary-party
@@ -236,11 +239,26 @@ Increases spawn weight based on:
 
 Event NPCs will use a **pre-existing NPC mod** compatible with Forge 1.18.2 that renders player-model entities. The event system will call into that mod's API to spawn and despawn NPCs at event start/end. Dialogue triggering and interaction hooks will be implemented via Forge events rather than reimplemented from scratch.
 
-> **TODO before Phase 6**: Evaluate NPC mod options. Requirements: Forge 1.18.2 compatibility, programmatic spawn/despawn API, player-skin-style rendering.
+> **TODO before Phase 7**: Evaluate NPC mod options. Requirements: Forge 1.18.2 compatibility, programmatic spawn/despawn API, player-skin-style rendering.
 
 ---
 
-# 6. Event UI System
+# 6. Instance System (DEFERRED — Phase 6)
+
+When a player (or party) enters a **trigger zone** at a scripted location, they are teleported to their own personal instance of that area. The instance's appearance and NPC/object states are generated from the player's personal data:
+
+1. **Personal progression** (`CharacterSheet.witnessedMainEvents`, `currentSeason`) — which chapter of the story this player has reached. A player who has not personally completed the chapter where the Prison fell sees it intact; one who has sees it destroyed.
+2. **Personal choices** (`CharacterSheet.personalFlags`, `completedSideEvents`) — NPC and object states from this player's past event decisions (e.g. a character they got killed appears as a body; one they saved appears alive).
+
+Two players whose personal state matches (same campaign chapter, same relevant decisions) can share the same instance. Players whose state differs each enter the instance that matches their own experience. There is no global state tier — every player's view of the world is derived purely from their own history.
+
+> ⚠️ **OPEN DESIGN POINT — Technical Mechanism Not Decided**
+>
+> Implementation options: dynamic per-party dimensions, reserved far-away regions in an existing dimension, or fixed predefined rooms reset per session. A related open question: when two players with matching state enter together, do they share a **single server-side space** (true co-op exploration) or get **separate but identical spaces** (simpler to build)? This decision must be made before Phase 6 begins. Keep all flag-reading logic decoupled from the rendering/teleportation mechanism so either approach can be plugged in.
+
+---
+
+# 7. Event UI System
 
 ## Chat Layer (lightweight)
 - Quick alerts, narration text, short prompts
@@ -258,20 +276,20 @@ Event NPCs will use a **pre-existing NPC mod** compatible with Forge 1.18.2 that
 
 ---
 
-# 7. Data Architecture (Forge 1.18.2)
+# 8. Data Architecture (Forge 1.18.2)
 
 | Concern | Forge 1.18.2 API | Notes |
 |---|---|---|
-| Server-wide campaign state | `SavedData` | World-persistent story flags (Phase 4+) |
+| Server-wide campaign state | `SavedData` | **Not implemented** — all story state is per-player in `CharacterSheet`. `CampaignSavedData` is reserved as a future placeholder if a global use case is identified. |
 | Character sheet (player data) | `Capability<CharacterSheet>` via `ExaniraCapabilityProvider` | Declared with `CapabilityManager.get(new CapabilityToken<CharacterSheet>(){})` in `CharacterSheetCapability`; provider attached via `AttachCapabilitiesEvent<Entity>` in `PlayerCapabilityHandler` |
 | Pending event state (player data) | `Capability<PendingEventAttachment>` via `ExaniraCapabilityProvider` | Declared with `CapabilityManager.get(new CapabilityToken<PendingEventAttachment>(){})` in `PendingEventCapability`; same provider as above |
-| Active event state (runtime) | `EventQueueManager` (in-memory) | Lost on server restart; reconstructed on player login via `resyncPlayerIfMidEvent()` |
-| Active event state (persistence) | `PendingEventAttachment` (capability NBT) | Stored in player NBT (`playerdata/UUID.dat`) via `ICapabilitySerializable`; 3 fields: `instanceKey`, `eventId`, `sceneId`; per-world automatically |
+| Active event state (runtime) | `EventQueueManager` (in-memory) + `ActiveEventSavedData` | Persisted to `world/data/exanira_active_events_state.dat` on every state change via `persist()`; rebuilt into memory on `ServerStartedEvent` via `restoreEventsFromSave()` |
+| Active event state (persistence) | `ActiveEventSavedData` (SavedData) + `PendingEventAttachment` (capability NBT) | `ActiveEventSavedData`: full event snapshot (participants, votes, timers, scene) — server-wide. `PendingEventAttachment`: per-player anchor (3 fields: `instanceKey`, `eventId`, `sceneId`) stored in `playerdata/UUID.dat`; used by `resyncPlayerIfMidEvent()` on player login |
 | UI / networking | `SimpleChannel` (`NetworkRegistry.newSimpleChannel`) | 8 packets: 3 C→S, 5 S→C; S→C packets registered with `Optional.of(NetworkDirection.PLAY_TO_CLIENT)` |
 
 > **Note**: The old `@CapabilityInject` pattern was removed in Forge 40.x. Use `CapabilityManager.get(new CapabilityToken<T>(){})` for static capability field declaration. No explicit `register()` call is needed when the provider implements `ICapabilitySerializable`.
 >
-> **Note**: `SavedData` (`ExaniraEventSavedData`) was previously tried for active event persistence but dropped due to Windows `AccessDeniedException` during atomic temp-file renames. `PendingEventAttachment` (player NBT via capability) is the correct approach.
+> **Note**: An early `SavedData` attempt (`ExaniraEventSavedData`) was abandoned during Phase 2 due to Windows `AccessDeniedException`. It has since been replaced by `ActiveEventSavedData`, which uses the same Forge `SavedData` API correctly and works on Windows. Both `ActiveEventSavedData` and `PendingEventAttachment` are active in the current codebase. The old file has been deleted.
 
 ---
 
@@ -301,21 +319,28 @@ Event NPCs will use a **pre-existing NPC mod** compatible with Forge 1.18.2 that
 - [🟢 Complete] Party formation via invite (`/exanira event invite` + `accept`)
 - [🟢 Complete] Server-side party vote (majority resolution; stat gate enforced before vote recorded)
 - [🟢 Complete] Vote state UI (`PartyVoteStatePacket`; vote counts on buttons; selection highlight)
-- [ ] Logout mid-party handling (auto-vote on disconnect; remove from participants)
+- [🟢 Complete] Logout mid-party handling (auto-vote on disconnect; remove from participants)
 
 ## Phase 4 — Main Story System
-- [ ] Global story flags (`SavedData` — world-persistent)
-- [ ] Main story event progression system
-- [ ] Main story event availability/unlock tracking
-- [ ] Main story event integration with campaign state
-- [ ] New menu accessible through the radio (we will discuss how), includes completed side events and a score for how you did, a main quest section showing your progress and what's left, and a party management page that allows you to invite players and see who has not voted or is offline in the party (including the abandonment timer)
+- [ ] Per-player story progression fields in `CharacterSheet` (`currentSeason`, `completedMainEvents`, `witnessedMainEvents`, `personalFlags`)
+- [ ] Main story event infrastructure (per-player prerequisites; `setsPersonalFlags` and progression writes on resolution; per-player season advancement on finale)
+- [ ] Stat upgrade system (milestone-triggered on main story resolution)
+- [ ] Side event star-rating outcome tracking (`CompletedSideEventRecord`)
+- [ ] Radio Menu (Shift+Right-click) — Side Events tab (per-player history + stars), Main Quest tab (per-player progression), Party tab (vote status + invite)
 
 ## Phase 5 — Horde Director
 - [ ] Spawn pressure director
 - [ ] Horde state machine (Dormant → Roaming → Tracking → Attacking → Dispersing)
 - [ ] Limb system design decision (custom entity vs. capability attachment)
 
-## Phase 6 — NPC System
+## Phase 6 — Instance System
+- [ ] Technical mechanism decision (dynamic dimensions / reserved region / fixed rooms)
+- [ ] Shared vs. separate space decision for players with matching state
+- [ ] Trigger zone detection (player enters area → state check → teleport to instance)
+- [ ] Instance state generation from personal progression + personal choices
+- [ ] Instance creation, population, and teardown
+
+## Phase 7 — NPC System
 - [ ] Evaluate Forge 1.18.2-compatible NPC mod
 - [ ] Spawn/despawn API integration
 - [ ] Event NPC hooks
