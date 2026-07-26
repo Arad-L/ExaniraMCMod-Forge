@@ -2,6 +2,7 @@ package com.exanira.handlers;
 
 import com.exanira.ExaniraMod;
 import com.exanira.character.CharacterSheetCapability;
+import com.exanira.event.EventQueueManager;
 import com.exanira.item.ExaniraItems;
 import com.exanira.network.CharacterCreationSubmitPacket;
 import com.exanira.network.CharacterSheetSyncPacket;
@@ -34,7 +35,7 @@ public final class CharacterCreationHandler {
                 // Sync the resolved sheet back so the client can display it
                 ExaniraMod.CHANNEL.send(
                         PacketDistributor.PLAYER.with(() -> player),
-                        new CharacterSheetSyncPacket(sheet)
+                        new CharacterSheetSyncPacket(sheet, EventQueueManager.INSTANCE.getAllDefinitions())
                 );
             });
         });

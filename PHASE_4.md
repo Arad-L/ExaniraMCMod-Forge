@@ -1,8 +1,8 @@
-# Phase 4 Execution — Main Story System
+﻿# Phase 4 Execution — Main Story System
 
 **Goal**: Per-player story progression and season model stored in `CharacterSheet`, main story event infrastructure with per-player flag gates and stat boosts, side event star-rating outcomes, and a new multi-tab Radio Menu (Side Events / Main Quest / Party).
 
-**Status**: 🔴 Not Started
+**Status**: 🔄 Active — core feature work complete; party tab polish (Task 4.9) in progress
 
 > **Platform**: Forge 1.18.2 (MDK 40.3.0) — Java 17  
 > **Design note**: All story state is per-player. There is no global campaign `SavedData` in this phase. `CampaignSavedData` is reserved as a future placeholder only.
@@ -13,15 +13,16 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 4.0 | Season architecture design | 🔴 Not Started | Per-player season model; new progression fields added to `CharacterSheet` |
+| 4.0 | Season architecture design | 🟢 Complete | Per-player season model; new progression fields added to `CharacterSheet` |
 | 4.1 | ~~`CampaignSavedData`~~ (deferred) | ⚪ Deferred | No global state in Phase 4 — all story progression is per-player in `CharacterSheet`. Reserved as a future stub. |
-| 4.2 | Main story event infrastructure | 🔴 Not Started | JSON schema extensions; per-player prerequisite checks; per-player `setsPersonalFlags` writes; per-player season advancement |
-| 4.3 | Stat upgrade system (milestone-triggered) | 🔴 Not Started | `incrementStat()` in `CharacterSheet`; triggered by `grantsStatBoost` in event JSON |
-| 4.4 | Side event outcome tracking (star rating) | 🔴 Not Started | `CompletedSideEventRecord` in `CharacterSheet` NBT; star computed at `endEvent()` |
-| 4.5 | Radio Menu Screen (`RadioMenuScreen`) | 🔴 Not Started | 3-tab screen; Shift+Right-click on Radio; Side Events / Main Quest / Party tabs |
-| 4.6 | `PartyStatusPacket` (S→C) | 🔴 Not Started | Party snapshot for Party tab; pushed on vote update and disconnect events |
-| 4.7 | Stub main story JSON events | 🔴 Not Started | 2 placeholder events: opening episode + season finale |
-| 4.8 | End-to-end test | 🔴 Not Started | Flags persist across restart; season transition; star rating; Radio Menu; stat boost |
+| 4.2 | Main story event infrastructure | 🟢 Complete | JSON schema extensions; per-player prerequisite checks; per-player `setsPersonalFlags` writes; per-player season advancement |
+| 4.3 | Stat upgrade system (milestone-triggered) | 🟢 Complete | `incrementStat()` in `CharacterSheet`; triggered by `grantsStatBoost` in event JSON |
+| 4.4 | Side event outcome tracking (star rating) | 🟢 Complete | `CompletedSideEventRecord` in `CharacterSheet` NBT; star computed at `endEvent()`; star ratings added to all terminal scenes in `the_barricated_house.json` |
+| 4.5 | Radio Menu Screen (`RadioMenuScreen`) | 🟢 Complete | 3-tab screen; Shift+Right-click on Radio; Side Events / Main Quest / Party tabs; GUI-scale-aware panel dimensions |
+| 4.6 | `PartyStatusPacket` (S→C) | 🟢 Complete | Party snapshot for Party tab; pushed on `RequestPartyStatusPacket`; added `voteInProgress` field |
+| 4.7 | Stub main story JSON events | 🟢 Complete | 2 placeholder events: opening episode + season finale |
+| 4.8 | End-to-end test + bug-fix pass | 🟢 Complete | See Bug-Fix Pass sections below |
+| 4.9 | Party tab polish | 🔴 In Progress | Live refresh, player heads, vote status fix, layout reorder — see Task 4.9 section |
 
 ---
 
@@ -187,20 +188,25 @@ Cached in `ClientEventState` (or a new `ClientPartyState` if cleaner) and read b
 | Class | Role |
 |-------|------|
 | `character/CompletedSideEventRecord.java` | Record for per-player side event outcome history |
-| `client/RadioMenuScreen.java` | 3-tab radio menu; Shift+Right-click entry point |
-| `network/PartyStatusPacket.java` | S→C party snapshot for Party tab |
+| `client/RadioMenuScreen.java` | 3-tab radio menu; Shift+Right-click entry point; GUI-scale-aware; party invite UI |
+| `network/PartyStatusPacket.java` | S→C party snapshot for Party tab; includes `voteInProgress` flag |
 | `network/RequestPartyStatusPacket.java` | C→S zero-payload; triggers server to send `PartyStatusPacket` |
+| `network/SendInvitePacket.java` | C→S; sends party invite by name from Radio Party tab |
+| `network/InviteNotificationPacket.java` | S→C; delivers invite notification to invitee's `ClientEventState` |
+| `network/AcceptInvitePacket.java` | C→S; accepts a specific invite by `instanceKey` |
 
 ### Modified Classes
 
 | Class | Change |
 |-------|--------|
-| `event/EventQueueManager.java` | `startEvent()` checks per-player prerequisites from `CharacterSheet.completedMainEvents`; `endEvent()` writes personal flags + stat boost + star rating + season advancement to player's `CharacterSheet` |
-| `event/EventDefinition.java` | New fields: `season`, `order`, `unlockRequires` (event IDs player must have completed), `setsPersonalFlags` (`Map<String,Boolean>` written to player's `personalFlags`), `seasonFinale`, `grantsStatBoost` |
+| `event/EventQueueManager.java` | `startEvent()` returns `StartResult` enum; blocks re-running completed MAIN events; `joinEvent()` returns `JoinResult` enum and checks prerequisites for MAIN events; `processInvite()` checks invitee prerequisites before sending invite and centralizes invite logic; `clear()`/`shutdownAll()` reset `savedEventData = null` to prevent cross-world ghost events |
+| `event/EventDefinition.java` | New fields: `season`, `order`, `unlockRequires`, `setsPersonalFlags`, `seasonFinale`, `grantsStatBoost` |
 | `event/EventScene.java` | New optional field: `starRating` (int, 1–3, present only on terminal scenes) |
-| `character/CharacterSheet.java` | Add `List<CompletedSideEventRecord> completedSideEvents`; `incrementStat(stat, amount)`; `Set<String> witnessedMainEvents`; `Set<String> completedMainEvents`; `int currentSeason`; `Map<String, Boolean> personalFlags`; `Map<Integer, Set<String>> seasonHistory` |
+| `character/CharacterSheet.java` | Added `completedSideEvents`, `incrementStat()`, `witnessedMainEvents`, `completedMainEvents`, `currentSeason`, `personalFlags`, `seasonHistory` |
+| `client/ClientEventState.java` | Added `PendingInvite` record, `pendingInvites` list, `addPendingInvite()`, `removePendingInvite()`, `getPendingInvites()`; `clear()` now also clears pending invites |
 | `item/RadioItem.java` | Shift+Right-click → open `RadioMenuScreen`; unshifted Right-click behaviour unchanged |
-| `network/ExaniraMod.java` | Register 2 new packets: `PartyStatusPacket`, `RequestPartyStatusPacket` |
+| `ExaniraMod.java` | Registers 13 total packets (3 new in bug-fix pass: `SendInvitePacket`, `InviteNotificationPacket`, `AcceptInvitePacket`) |
+| `command/ExaniraCommands.java` | `executeEventStart()` uses `StartResult`; `executeEventInvite()` delegates to `EventQueueManager.processInvite()` |
 
 ---
 
@@ -228,6 +234,83 @@ Existing side event JSON files updated to add `"season": 1` field. No other chan
 | Location instances are state-matched | Instances are determined by each player's personal progression and choices. Players with matching state (same chapter, same relevant decisions) can share an instance. Players with differing state each enter the instance matching their own experience. Whether state-matched players share a single server-side space or get separate identical spaces is an open Phase 6 design decision. |
 
 ---
+
+
+---
+
+## Bug-Fix Pass (post-4.8 testing)
+
+The following bugs were discovered during end-to-end testing and fixed before Phase 4 was closed.
+
+### Critical Bugs Fixed
+
+| Bug | Root Cause | Fix |
+|-----|-----------|-----|
+| Season finale could be repeated, advancing season multiple times | `startEvent()` only checked prerequisites; no check for already-completed events | `startEvent()` now returns `StartResult` enum; added `completedMainEvents.contains(eventId)` guard for MAIN events |
+| Active event state persisted across world deletion (cross-world ghost events) | `savedEventData` (the `ActiveEventSavedData` reference) was never reset between world sessions, so `restoreEventsFromSave()` on a new world loaded the old world's data | `clear()` and `shutdownAll()` now set `savedEventData = null`; `restoreEventsFromSave()` fetches a fresh handle from the current server |
+| Party invite bypassed main story prerequisites | `joinEvent()` had no prerequisite check; invited players could skip story gates | `joinEvent()` now runs the same MAIN event prerequisite check as `startEvent()` |
+| Duplicate error message when prerequisites failed | `startEvent()` sent an in-world message AND the command handler printed a second generic failure message | `startEvent()` returns `StartResult` (`SUCCESS` / `ALREADY_IN_EVENT` / `PREREQ_FAILED` / `ALREADY_COMPLETED`); command only shows generic message for `ALREADY_IN_EVENT` |
+
+### High-Priority Fixes
+
+| Item | Fix |
+|------|-----|
+| Star ratings always showed 1★ regardless of outcome | Terminal scenes in `the_barricated_house.json` were missing `starRating` fields; added: `earned_trust`=3, `false_trust`=2, walk/threaten/reject=1 |
+| `EditBox` suggestion text pushed alongside typed characters | `inviteBox` promoted to class field; `tick()` override clears suggestion when value is non-empty |
+| Party tab "Pending" label was confusing | Added `voteInProgress` boolean to `PartyStatusPacket`; Party tab now shows `[In Party]` when no vote is active, `[Waiting]` / `[Voted]` during an active choice vote |
+| Party invites required chat commands | Added three new packets: `SendInvitePacket` (C→S), `InviteNotificationPacket` (S→C), `AcceptInvitePacket` (C→S). Party tab now shows incoming invites with clickable Accept buttons; no commands needed |
+| Screen layout broken at non-default GUI scales | Panel dimensions (`panelW`, `panelH`) are now computed in `init()` and clamped to 94%/92% of the viewport, replacing the previous hardcoded 380×260 constants |
+| Screen spacing looked wrong after season finale | "No main story events loaded." replaced with softer message; "Story So Far" entries given distinct colour; `contentMaxY` calculation corrected to use dynamic `panelH` |
+
+### New Packets (Phase 4 Bug-Fix Pass)
+
+| Packet | Direction | Purpose |
+|--------|-----------|---------|
+| `SendInvitePacket` | C→S | Sends an invite by player name from the Radio Party tab; replaces the old `/exanira event invite` chat-command route |
+| `InviteNotificationPacket` | S→C | Delivers an invite notification to the invitee's `ClientEventState`; displayed in the Party tab with Accept button |
+| `AcceptInvitePacket` | C→S | Accepts a specific pending invite by `instanceKey`; calls `joinEvent()` server-side |
+
+Total registered packets after this pass: **13**.
+
+---
+
+## Bug-Fix Pass 2 (post-4.8 second round of testing)
+
+The following bugs were discovered during a second round of testing and fixed after the first bug-fix pass.
+
+### Bugs Fixed
+
+| Bug | Root Cause | Fix |
+|-----|-----------|-----|
+| Double error message when invite accept fails due to prerequisites | `joinEvent()` sent the prereq message AND `AcceptInvitePacket` always appended a second generic "Could not join" message | `joinEvent()` now returns a `JoinResult` enum (`SUCCESS` / `NOT_FOUND` / `NOT_AT_START` / `ALREADY_IN_EVENT` / `PREREQ_FAILED`); `AcceptInvitePacket` suppresses the generic message when the result is `PREREQ_FAILED` |
+| Party invite sent to a player who hadn't completed prerequisites | `processInvite()` only checked the **inviter's** event state; the invitee's completed events were never checked | `processInvite()` now checks the invitee's `completedMainEvents` against the event's `unlockRequires` before calling `setPendingInvitation()`; the inviter receives a clear explanation if the invitee isn't ready |
+| Main Quest tab text overlapping | `mainEvents.isEmpty()` branch drew the "No new stories this season yet." line but never advanced `y`, so the "Story So Far" section rendered on top of it | Added the missing `y += LINE_H` after the empty-events `drawString` call |
+| Accept button in Party tab had no visible border | Button was rendered with a single `fill()` (dark green background only) | Now drawn as two stacked fills: a 1 px `0xFF336633` border fill, then the `0xFF1A441A` background on top; click-detection area expanded to match the border |
+| Accept button sat lower than the invite text beside it | Button box spanned `y-1` to `y+LINE_H+1`; visual center was 2 px below the text center (`y+4.5`) | Box tightened to `y-2` to `y+11` (background) and `y-3` to `y+12` (border), giving a center at `y+4.5` to match Minecraft's 9 px font center |
+
+---
+
+## Task 4.9 — Party Tab Polish
+
+**Status**: 🔴 In Progress
+
+Issues found during testing that need to be addressed before the party tab is considered production-ready.
+
+### Items
+
+| # | Item | Priority | Notes |
+|---|------|----------|-------|
+| 4.9-A | Party tab live refresh | High | Tab only reflects state at the moment `RequestPartyStatusPacket` was last sent (on open). When a player joins the party or leaves, the client doesn't see the change until they close and reopen the screen. The disconnect timer also doesn't count down live. Fix: add a `tick()` rate-limited re-request (e.g. every 40 ticks / 2 s) and push `PartyStatusPacket` server-side on any party membership change. |
+| 4.9-B | Player head icon next to party member names | Medium | Each party member row should show a 8×8 or 16×16 head texture to the left of the display name. Use `AbstractClientPlayer`'s skin texture if online; fall back to the default Steve/Alex skin for offline members. Requires looking up `Minecraft.getInstance().getConnection().getOnlinePlayerById(uuid)` to get the `PlayerInfo` and skin texture resource location. |
+| 4.9-C | Vote status not shown after first scene | Medium | After the first scene, all members show `[In Party]` instead of `[Waiting]`/`[Voted]`. This may be because the test scenes had no choices (single-option scenes), which means `voteInProgress` is always `false` and the tab correctly shows `[In Party]`. **Needs verification**: run through a scene that has multiple choices and confirm `[Waiting]`/`[Voted]` labels appear during the vote. If they don't, the bug is in `buildPartyStatus()` computing `voteInProgress` incorrectly. |
+| 4.9-D | Layout: "Not currently in a party" above "No pending invitations" | Low | Current render order: pending invites section first, then party section (which shows "Not currently in a party"). When there are no invites AND no party, the empty-invite message renders above the no-party message, which reads awkwardly. Fix: show the party status ("Not currently in a party.") first, then the pending invites section below it. |
+
+### Implementation Notes
+
+- **4.9-A (live refresh)**: Server-side pushes are the cleanest approach — add a call to `broadcastPartyStatus(active)` inside `joinEvent()` after a participant is successfully added, so all existing party members get an updated snapshot automatically. Client-side polling (tick-based re-request) covers the disconnect timer countdown.
+- **4.9-B (heads)**: Minecraft renders player heads in inventory GUIs using `InventoryScreen.renderEntityInInventory` or by directly binding the skin texture and drawing a 8×8 UV region from the face layer of the 64×64 skin atlas. The simpler path is to draw the face quad manually: UV (8,8)→(16,16) on a 64×64 texture = `u0=8/64, v0=8/64, u1=16/64, v1=16/64`. Fall back to `DefaultPlayerSkin.getDefaultSkin(uuid)` for offline/unknown players.
+- **4.9-C (vote status)**: Check `EventQueueManager.buildPartyStatus()` — `voteInProgress` is set to `!active.currentScene().choices().isEmpty()`. If a scene genuinely has no choices (single `[Continue]` option), this is correct behaviour. Test with `the_barricated_house.json` which has multi-choice scenes.
+- **4.9-D (layout reorder)**: In `renderPartyTab()`, move the "Not currently in a party" / "Start an event" block to render before the pending invites loop, then render invites below.
 
 ## Phase 5 Preview — Horde Director
 

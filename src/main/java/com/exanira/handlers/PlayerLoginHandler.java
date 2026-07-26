@@ -34,7 +34,7 @@ public class PlayerLoginHandler {
                 EventQueueManager.INSTANCE.resyncPlayerIfMidEvent(player);
                 ExaniraMod.CHANNEL.send(
                         PacketDistributor.PLAYER.with(() -> player),
-                        new CharacterSheetSyncPacket(sheet)
+                        new CharacterSheetSyncPacket(sheet, EventQueueManager.INSTANCE.getAllDefinitions())
                 );
             }
         });

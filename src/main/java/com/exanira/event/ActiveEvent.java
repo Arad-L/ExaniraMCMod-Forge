@@ -254,6 +254,24 @@ public class ActiveEvent {
         return Collections.unmodifiableMap(votes);
     }
 
+    /**
+     * Returns the maximum remaining seconds on any active per-player abandonment timer,
+     * or -1 if no timer is currently running.
+     */
+    public int getTimerRemainingSeconds() {
+        if (playerAbandonmentTimers.isEmpty()) return -1;
+        long now = System.currentTimeMillis();
+        int maxRemaining = -1;
+        for (Long startTime : playerAbandonmentTimers.values()) {
+            long remainingMs = ABANDONMENT_GRACE_PERIOD_MS - (now - startTime);
+            if (remainingMs > 0) {
+                int remainingSec = (int)(remainingMs / 1000);
+                if (remainingSec > maxRemaining) maxRemaining = remainingSec;
+            }
+        }
+        return maxRemaining;
+    }
+
     public String debugState() {
         return "Scene=" + currentSceneId +
                 ", participants=" + participants.size() +

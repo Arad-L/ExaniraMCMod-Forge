@@ -68,15 +68,16 @@ public class ExaniraCommands {
             return 0;
         }
 
-        boolean started = EventQueueManager.INSTANCE.startEvent(id, player);
-        if (!started) {
+        EventQueueManager.StartResult result = EventQueueManager.INSTANCE.startEvent(id, player);
+        if (result == EventQueueManager.StartResult.SUCCESS) {
+            ctx.getSource().sendSuccess(new TextComponent("Started event '" + id + "'."), false);
+            return 1;
+        } else if (result == EventQueueManager.StartResult.ALREADY_IN_EVENT) {
             ctx.getSource().sendFailure(
                     new TextComponent("Could not start event -- player may already be in an event."));
-            return 0;
         }
-
-        ctx.getSource().sendSuccess(new TextComponent("Started event '" + id + "'."), false);
-        return 1;
+        // PREREQ_FAILED / ALREADY_COMPLETED: message already shown to player in-world
+        return 0;
     }
 
     private static int executeEventStopSelf(CommandContext<CommandSourceStack> ctx)
@@ -112,59 +113,7 @@ public class ExaniraCommands {
 
         ServerPlayer inviter = ctx.getSource().getPlayerOrException();
         ServerPlayer invitee = EntityArgument.getPlayer(ctx, "player");
-
-        String instanceKey = EventQueueManager.INSTANCE
-                .getPlayerEventKey(inviter.getUUID()).orElse(null);
-
-        if (instanceKey == null) {
-            ctx.getSource().sendFailure(
-                    new TextComponent("You must be in an event to invite others."));
-            return 0;
-        }
-
-        if (EventQueueManager.INSTANCE.isPlayerInEvent(invitee.getUUID())) {
-            ctx.getSource().sendFailure(
-                    new TextComponent(invitee.getName().getString() + " is already in an event."));
-            return 0;
-        }
-
-        Optional<ActiveEvent> activeEventOpt =
-                EventQueueManager.INSTANCE.getActiveEvent(instanceKey);
-
-        if (activeEventOpt.isEmpty() || activeEventOpt.get().isResolved()) {
-            ctx.getSource().sendFailure(new TextComponent("The event has already ended."));
-            return 0;
-        }
-
-        ActiveEvent activeEvent = activeEventOpt.get();
-
-        if (!activeEvent.currentSceneId().equals(activeEvent.definition().startScene())) {
-            ctx.getSource().sendFailure(
-                    new TextComponent("Invites can only be sent from the first scene of the event."));
-            return 0;
-        }
-
-        if (EventQueueManager.INSTANCE.hasPendingInvitationForEvent(invitee.getUUID(), instanceKey)) {
-            ctx.getSource().sendFailure(
-                    new TextComponent(invitee.getName().getString()
-                            + " already has your invitation for this event."));
-            return 0;
-        }
-
-        EventQueueManager.INSTANCE.setPendingInvitation(invitee.getUUID(), instanceKey);
-
-        LOGGER.info("[Exanira] Invitation set for player {} to join event {}",
-                invitee.getUUID(), instanceKey);
-
-        invitee.sendMessage(new TextComponent(
-                inviter.getName().getString()
-                        + " has invited you to join their event! "
-                        + "Use /exanira event accept to join."
-        ).withStyle(ChatFormatting.AQUA), Util.NIL_UUID);
-
-        ctx.getSource().sendSuccess(
-                new TextComponent("Invited " + invitee.getName().getString() + " to join your event."),
-                false);
+        EventQueueManager.INSTANCE.processInvite(inviter, invitee);
         return 1;
     }
 
@@ -184,15 +133,17 @@ public class ExaniraCommands {
             return 0;
         }
 
-        boolean joined = EventQueueManager.INSTANCE.joinEvent(instanceKey, player);
-        if (!joined) {
+        EventQueueManager.JoinResult result = EventQueueManager.INSTANCE.joinEvent(instanceKey, player);
+        if (result == EventQueueManager.JoinResult.SUCCESS) {
+            ctx.getSource().sendSuccess(new TextComponent("You have accepted the invitation."), false);
+            return 1;
+        }
+        if (result != EventQueueManager.JoinResult.PREREQ_FAILED) {
+            // PREREQ_FAILED: joinEvent() already sent the in-world message
             ctx.getSource().sendFailure(
                     new TextComponent("Could not join the event. "
                             + "The event may have progressed or ended."));
-            return 0;
         }
-
-        ctx.getSource().sendSuccess(new TextComponent("You have accepted the invitation."), false);
-        return 1;
+        return 0;
     }
 }

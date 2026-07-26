@@ -1,6 +1,7 @@
-{
+﻿{
   "id": "the_last_inhaler",
   "type": "side",
+  "season": 1,
   "offlineFallback": "ignore",
   "startScene": "desperate_request",
   "scenes": {

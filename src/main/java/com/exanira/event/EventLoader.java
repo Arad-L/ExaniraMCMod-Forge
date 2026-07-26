@@ -1,5 +1,6 @@
 package com.exanira.event;
 
+import com.exanira.character.Stat;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.logging.LogUtils;
@@ -103,7 +104,8 @@ public class EventLoader extends SimplePreparableReloadListener<Map<String, Even
                         sceneId,
                         sceneDto.dialogue != null ? List.copyOf(sceneDto.dialogue) : List.of(),
                         choices,
-                        sceneDto.successEvent
+                        sceneDto.successEvent,
+                        sceneDto.starRating
                 ));
             });
         }
@@ -114,13 +116,31 @@ public class EventLoader extends SimplePreparableReloadListener<Map<String, Even
             LOGGER.warn("[Exanira] Event '{}' has no startScene — defaulting to '{}'", dto.id, startScene);
         }
 
+        // Phase 4: parse stat boost
+        EventDefinition.StatBoost statBoost = null;
+        if (dto.grantsStatBoost != null && dto.grantsStatBoost.stat != null) {
+            try {
+                Stat boostStat = Stat.valueOf(dto.grantsStatBoost.stat.toUpperCase());
+                statBoost = new EventDefinition.StatBoost(boostStat, dto.grantsStatBoost.amount);
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("[Exanira] Unknown stat '{}' in grantsStatBoost for event '{}'",
+                        dto.grantsStatBoost.stat, dto.id);
+            }
+        }
+
         return new EventDefinition(
                 dto.id,
                 type,
                 dto.npc,
                 dto.offlineFallback != null ? dto.offlineFallback : "ignore",
                 startScene,
-                Map.copyOf(scenes)
+                Map.copyOf(scenes),
+                dto.season,
+                dto.order,
+                dto.unlockRequires != null ? List.copyOf(dto.unlockRequires) : List.of(),
+                dto.setsPersonalFlags != null ? Map.copyOf(dto.setsPersonalFlags) : Map.of(),
+                dto.seasonFinale,
+                statBoost
         );
     }
 
@@ -133,12 +153,25 @@ public class EventLoader extends SimplePreparableReloadListener<Map<String, Even
         String offlineFallback;
         String startScene;
         Map<String, SceneDto> scenes;
+        // Phase 4 fields
+        int season;
+        int order;
+        List<String> unlockRequires;
+        Map<String, Boolean> setsPersonalFlags;
+        boolean seasonFinale;
+        StatBoostDto grantsStatBoost;
+    }
+
+    private static class StatBoostDto {
+        String stat;
+        int amount;
     }
 
     private static class SceneDto {
         List<String> dialogue;
         List<ChoiceDto> choices;
         String successEvent;
+        int starRating;  // 0 if absent; 1–3 on terminal scenes
     }
 
     private static class ChoiceDto {

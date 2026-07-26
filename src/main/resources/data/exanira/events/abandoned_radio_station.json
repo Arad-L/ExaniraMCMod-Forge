@@ -1,6 +1,7 @@
-{
+﻿{
   "id": "abandoned_radio_station",
   "type": "side",
+  "season": 1,
   "offlineFallback": "ignore",
   "startScene": "first_contact",
   "scenes": {
@@ -55,7 +56,7 @@
     },
     "trace_source": {
       "dialogue": [
-        "The signal resolves to coordinates — a warehouse two kilometres east.",
+        "The signal resolves to coordinates â€” a warehouse two kilometres east.",
         "The broadcast loops on repeat. They may not even know you heard them."
       ],
       "choices": [
@@ -68,7 +69,7 @@
           "requires": { "leadership": 3 },
           "checkType": "hard",
           "nextScene": "locate_survivor",
-          "lockedText": "You hesitate — you've never been good at knowing what to say."
+          "lockedText": "You hesitate â€” you've never been good at knowing what to say."
         },
         {
           "text": "Too risky. Discard the coordinates.",
@@ -85,7 +86,7 @@
     },
     "plan_distraction": {
       "dialogue": [
-        "You walk them through it — noise from the far side of the building, timed movement.",
+        "You walk them through it â€” noise from the far side of the building, timed movement.",
         "'That... might actually work. I'll try it. Thank you.' The channel goes quiet."
       ],
       "choices": []

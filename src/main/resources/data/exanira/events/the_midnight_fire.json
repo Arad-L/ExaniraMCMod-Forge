@@ -1,6 +1,7 @@
-{
+﻿{
   "id": "the_midnight_fire",
   "type": "side",
+  "season": 1,
   "offlineFallback": "ignore",
   "startScene": "smoke_on_horizon",
   "scenes": {

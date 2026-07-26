@@ -1,0 +1,59 @@
+{
+  "id": "season_1_finale",
+  "type": "main",
+  "season": 1,
+  "order": 99,
+  "offlineFallback": "ignore",
+  "unlockRequires": ["season_1_episode_1"],
+  "setsPersonalFlags": { "season_1_complete": true },
+  "seasonFinale": true,
+  "grantsStatBoost": { "stat": "SURVIVAL", "amount": 1 },
+  "startScene": "arrival",
+  "scenes": {
+    "arrival": {
+      "dialogue": [
+        "You reach the edge of the settlement.",
+        "The walls are real. The people inside are real.",
+        "This is the end of one chapter — and the start of the next."
+      ],
+      "choices": [
+        {
+          "text": "Walk through the gates",
+          "nextScene": "enter_settlement"
+        },
+        {
+          "text": "Watch from a distance first",
+          "requires": { "perception": 4 },
+          "checkType": "hard",
+          "nextScene": "observe_settlement",
+          "lockedText": "You can't read the situation from here."
+        }
+      ]
+    },
+    "observe_settlement": {
+      "dialogue": [
+        "You study the settlement for a long moment.",
+        "The guards rotate on a schedule. No unusual tension.",
+        "These people have held this place for a while.",
+        "You decide it's safe enough to approach."
+      ],
+      "choices": [
+        {
+          "text": "Enter the settlement",
+          "nextScene": "enter_settlement"
+        }
+      ]
+    },
+    "enter_settlement": {
+      "dialogue": [
+        "The gates open.",
+        "A woman with tired eyes but a steady voice greets you.",
+        "'We don't have much. But we have each other.'",
+        "It's not much. But for the first time in a long time, it feels like enough.",
+        "Season 1 complete. Season 2 begins."
+      ],
+      "choices": [],
+      "starRating": 3
+    }
+  }
+}

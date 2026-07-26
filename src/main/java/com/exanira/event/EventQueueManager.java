@@ -3,10 +3,13 @@ package com.exanira.event;
 import com.exanira.ExaniraMod;
 import com.exanira.character.CharacterSheet;
 import com.exanira.character.CharacterSheetCapability;
+import com.exanira.character.CompletedSideEventRecord;
 import com.exanira.character.Stat;
 import com.exanira.item.ExaniraItems;
+import com.exanira.network.CharacterSheetSyncPacket;
 import com.exanira.network.EventEndPacket;
 import com.exanira.network.EventStartPacket;
+import com.exanira.network.InviteNotificationPacket;
 import com.exanira.network.PartyVoteStatePacket;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
@@ -27,6 +30,36 @@ import java.util.stream.Collectors;
 public class EventQueueManager {
 
     public static final EventQueueManager INSTANCE = new EventQueueManager();
+
+    /**
+     * Result codes returned by {@link #startEvent} so callers can distinguish
+     * between failure types without relying on in-world chat messages.
+     */
+    public enum StartResult {
+        SUCCESS,
+        /** Player is already in an event. */
+        ALREADY_IN_EVENT,
+        /** Prerequisites not met — method already sent an in-world message. */
+        PREREQ_FAILED,
+        /** MAIN event already completed — method already sent an in-world message. */
+        ALREADY_COMPLETED
+    }
+
+    /**
+     * Result codes returned by {@link #joinEvent} so callers can suppress
+     * duplicate error messages when the method already messaged the player.
+     */
+    public enum JoinResult {
+        SUCCESS,
+        /** Event not found or already resolved. */
+        NOT_FOUND,
+        /** Event has progressed past the start scene. */
+        NOT_AT_START,
+        /** Player is already participating in a different event. */
+        ALREADY_IN_EVENT,
+        /** Prerequisites not met — method already sent an in-world message. */
+        PREREQ_FAILED
+    }
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private final Map<String, ActiveEvent> activeEvents      = new ConcurrentHashMap<>();
@@ -71,14 +104,56 @@ public class EventQueueManager {
         return Optional.ofNullable(loadedEvents.get(id));
     }
 
+    /** Returns all currently loaded event definitions (unmodifiable view). */
+    public Collection<EventDefinition> getAllDefinitions() {
+        return loadedEvents.values();
+    }
+
     // ───────────────────────── START ────────────────────────────────────────
 
-    public boolean startEvent(String eventId, ServerPlayer player) {
+    public StartResult startEvent(String eventId, ServerPlayer player) {
         EventDefinition def = loadedEvents.get(eventId);
-        if (def == null) return false;
+        if (def == null) return StartResult.ALREADY_IN_EVENT;
 
         UUID playerId = player.getUUID();
-        if (playerToEvent.containsKey(playerId)) return false; // already in event
+        if (playerToEvent.containsKey(playerId)) return StartResult.ALREADY_IN_EVENT;
+
+        // Prevent replaying a completed MAIN event (season finales must not run twice)
+        if (def.type() == EventType.MAIN) {
+            CharacterSheet checkSheet = CharacterSheetCapability.get(player).orElse(null);
+            if (checkSheet != null && checkSheet.getCompletedMainEvents().contains(eventId)) {
+                player.sendMessage(
+                        new TextComponent("You have already completed this story event.")
+                                .withStyle(ChatFormatting.YELLOW), Util.NIL_UUID);
+                return StartResult.ALREADY_COMPLETED;
+            }
+        }
+
+        // Phase 4: per-player prerequisite check for main story events
+        if (def.type() == EventType.MAIN && !def.unlockRequires().isEmpty()) {
+            CharacterSheet prereqSheet = CharacterSheetCapability.get(player).orElse(null);
+            if (prereqSheet != null) {
+                for (String requiredId : def.unlockRequires()) {
+                    if (!prereqSheet.getCompletedMainEvents().contains(requiredId)) {
+                        player.sendMessage(
+                                new TextComponent("You haven't completed the required events to start this one.")
+                                        .withStyle(ChatFormatting.RED), Util.NIL_UUID);
+                        return StartResult.PREREQ_FAILED;
+                    }
+                }
+            }
+        }
+
+        // Phase 4: mark main event as witnessed on join
+        if (def.type() == EventType.MAIN) {
+            CharacterSheetCapability.get(player).ifPresent(sheet -> {
+                sheet.addWitnessedMainEvent(eventId);
+                ExaniraMod.CHANNEL.send(
+                        PacketDistributor.PLAYER.with(() -> player),
+                        new CharacterSheetSyncPacket(sheet, loadedEvents.values())
+                );
+            });
+        }
 
         String instanceKey = eventId + "_" + UUID.randomUUID();
         ActiveEvent active = new ActiveEvent(def, playerId);
@@ -87,7 +162,7 @@ public class EventQueueManager {
         playerToEvent.put(playerId, instanceKey);
 
         EventScene scene = active.currentScene();
-        if (scene == null) return false;
+        if (scene == null) return StartResult.ALREADY_IN_EVENT;
 
         PendingEventCapability.get(player).ifPresent(p ->
                 p.set(instanceKey, eventId, active.currentSceneId())
@@ -96,20 +171,36 @@ public class EventQueueManager {
         setRadioActive(player, true);
         persist(instanceKey, active);      // <-- save event creation immediately
         broadcastScene(instanceKey, active, scene);
-        return true;
+        return StartResult.SUCCESS;
     }
 
     // ───────────────────────── JOIN EXISTING ────────────────────────────────
 
-    public boolean joinEvent(String instanceKey, ServerPlayer player) {
+    public JoinResult joinEvent(String instanceKey, ServerPlayer player) {
         ActiveEvent active = activeEvents.get(instanceKey);
-        if (active == null || active.isResolved()) return false;
+        if (active == null || active.isResolved()) return JoinResult.NOT_FOUND;
 
         // Can only join at the very first scene
-        if (!active.currentSceneId().equals(active.definition().startScene())) return false;
+        if (!active.currentSceneId().equals(active.definition().startScene())) return JoinResult.NOT_AT_START;
 
         UUID id = player.getUUID();
-        if (playerToEvent.containsKey(id)) return false;
+        if (playerToEvent.containsKey(id)) return JoinResult.ALREADY_IN_EVENT;
+
+        // Prerequisite check for MAIN events — party invites must not bypass story gates
+        EventDefinition joinDef = active.definition();
+        if (joinDef.type() == EventType.MAIN && !joinDef.unlockRequires().isEmpty()) {
+            CharacterSheet joinSheet = CharacterSheetCapability.get(player).orElse(null);
+            if (joinSheet != null) {
+                for (String requiredId : joinDef.unlockRequires()) {
+                    if (!joinSheet.getCompletedMainEvents().contains(requiredId)) {
+                        player.sendMessage(
+                                new TextComponent("You haven't completed the required story events to join this one.")
+                                        .withStyle(ChatFormatting.RED), Util.NIL_UUID);
+                        return JoinResult.PREREQ_FAILED;
+                    }
+                }
+            }
+        }
 
         active.addParticipant(id);
         playerToEvent.put(id, instanceKey);
@@ -131,7 +222,7 @@ public class EventQueueManager {
             sendScene(player, instanceKey, scene);
             setRadioActive(player, true);
         }
-        return true;
+        return JoinResult.SUCCESS;
     }
 
     // ───────────────────────── INVITE ACCEPT ────────────────────────────────
@@ -140,7 +231,7 @@ public class EventQueueManager {
         UUID id = player.getUUID();
         String instanceKey = pendingInvitations.remove(id);
         if (instanceKey == null) return false;
-        return joinEvent(instanceKey, player);
+        return joinEvent(instanceKey, player) == JoinResult.SUCCESS;
     }
 
     // ───────────────────────── CHOICE / VOTING ──────────────────────────────
@@ -300,6 +391,10 @@ private void endEvent(String instanceKey, String nextEventId) {
         ActiveEvent active = activeEvents.remove(instanceKey);
         if (active == null) return;
 
+        // Capture terminal scene and definition before removing from active storage
+        EventScene terminalScene = active.currentScene();
+        EventDefinition endDef = active.definition();
+
         // Event is finished — remove from persistent storage so it is not restored on restart.
         removeSaved(instanceKey);
 
@@ -313,6 +408,9 @@ private void endEvent(String instanceKey, String nextEventId) {
             if (server != null) {
                 ServerPlayer p = server.getPlayerList().getPlayer(participantId);
                 if (p != null) {
+                    // Phase 4: apply progression effects for online participants
+                    applyProgressionEffects(p, endDef, terminalScene);
+
                     PendingEventCapability.get(p).ifPresent(PendingEventAttachment::clear);
                     setRadioActive(p, false);
                     ExaniraMod.CHANNEL.send(
@@ -330,12 +428,68 @@ private void endEvent(String instanceKey, String nextEventId) {
         }
     }
 
+    /**
+     * Applies Phase 4 story progression effects to an online participant after event resolution.
+     * Offline players miss the write — acceptable for Phase 4 MVP.
+     */
+    private void applyProgressionEffects(ServerPlayer player, EventDefinition def, EventScene terminalScene) {
+        CharacterSheet sheet = CharacterSheetCapability.get(player).orElse(null);
+        if (sheet == null) return;
+
+        boolean changed = false;
+
+        // Personal flag writes (all event types)
+        for (Map.Entry<String, Boolean> entry : def.setsPersonalFlags().entrySet()) {
+            sheet.setPersonalFlag(entry.getKey(), entry.getValue());
+            changed = true;
+        }
+
+        // Main event completion
+        if (def.type() == EventType.MAIN) {
+            sheet.addCompletedMainEvent(def.id());
+            changed = true;
+
+            // Season finale: archive current season side events and advance season
+            if (def.seasonFinale()) {
+                int oldSeason = sheet.getCurrentSeason();
+                sheet.archiveSeasonSideEvents(oldSeason);
+                sheet.setCurrentSeason(oldSeason + 1);
+                LOGGER.info("[Exanira] Player {} advanced from season {} to {}",
+                        player.getName().getString(), oldSeason, sheet.getCurrentSeason());
+            }
+        }
+
+        // Side event completion record
+        if (def.type() == EventType.SIDE) {
+            int starRating = (terminalScene != null && terminalScene.starRating() > 0)
+                    ? terminalScene.starRating() : 1;
+            sheet.addCompletedSideEvent(new CompletedSideEventRecord(
+                    def.id(), def.season(), starRating, System.currentTimeMillis()
+            ));
+            changed = true;
+        }
+
+        // Stat boost
+        if (def.grantsStatBoost() != null) {
+            sheet.incrementStat(def.grantsStatBoost().stat(), def.grantsStatBoost().amount());
+            changed = true;
+        }
+
+        if (changed) {
+            ExaniraMod.CHANNEL.send(
+                    PacketDistributor.PLAYER.with(() -> player),
+                    new CharacterSheetSyncPacket(sheet, loadedEvents.values())
+            );
+        }
+    }
+
     // ───────────────────────── CLEAR / SHUTDOWN ─────────────────────────────
 
     public void clear() {
         activeEvents.clear();
         playerToEvent.clear();
         pendingInvitations.clear();
+        savedEventData = null; // force fresh load from the new world's SavedData
     }
 
     public void shutdownAll(MinecraftServer server) {
@@ -362,6 +516,79 @@ private void endEvent(String instanceKey, String nextEventId) {
         activeEvents.clear();
         playerToEvent.clear();
         pendingInvitations.clear();
+        savedEventData = null; // force fresh load from the new world's SavedData
+    }
+
+    // ───────────────────────── INVITE (shared logic) ─────────────────────────
+
+    /**
+     * Validates and dispatches a party invite from {@code inviter} to {@code invitee}.
+     * Called from both the command handler and {@link com.exanira.network.SendInvitePacket}.
+     * Sends {@link InviteNotificationPacket} to the invitee on success.
+     */
+    public void processInvite(ServerPlayer inviter, ServerPlayer invitee) {
+        String instanceKey = getPlayerEventKey(inviter.getUUID()).orElse(null);
+        if (instanceKey == null) {
+            inviter.sendMessage(new TextComponent("You must be in an event to invite others.")
+                    .withStyle(ChatFormatting.RED), Util.NIL_UUID);
+            return;
+        }
+        if (isPlayerInEvent(invitee.getUUID())) {
+            inviter.sendMessage(new TextComponent(invitee.getName().getString() + " is already in an event.")
+                    .withStyle(ChatFormatting.RED), Util.NIL_UUID);
+            return;
+        }
+        Optional<ActiveEvent> activeOpt = getActiveEvent(instanceKey);
+        if (activeOpt.isEmpty() || activeOpt.get().isResolved()) {
+            inviter.sendMessage(new TextComponent("The event has already ended.")
+                    .withStyle(ChatFormatting.RED), Util.NIL_UUID);
+            return;
+        }
+        ActiveEvent active = activeOpt.get();
+        if (!active.currentSceneId().equals(active.definition().startScene())) {
+            inviter.sendMessage(new TextComponent("Invites can only be sent from the first scene of the event.")
+                    .withStyle(ChatFormatting.RED), Util.NIL_UUID);
+            return;
+        }
+        if (hasPendingInvitationForEvent(invitee.getUUID(), instanceKey)) {
+            inviter.sendMessage(new TextComponent(invitee.getName().getString() + " already has your invitation.")
+                    .withStyle(ChatFormatting.YELLOW), Util.NIL_UUID);
+            return;
+        }
+        // Block the invite if the invitee doesn't meet prerequisites for this event
+        EventDefinition inviteDef = active.definition();
+        if (inviteDef.type() == EventType.MAIN && !inviteDef.unlockRequires().isEmpty()) {
+            CharacterSheet inviteeSheet = CharacterSheetCapability.get(invitee).orElse(null);
+            if (inviteeSheet != null) {
+                for (String requiredId : inviteDef.unlockRequires()) {
+                    if (!inviteeSheet.getCompletedMainEvents().contains(requiredId)) {
+                        inviter.sendMessage(new TextComponent(
+                                invitee.getName().getString() + " hasn't completed the required story events for this event.")
+                                .withStyle(ChatFormatting.RED), Util.NIL_UUID);
+                        return;
+                    }
+                }
+            }
+        }
+        setPendingInvitation(invitee.getUUID(), instanceKey);
+        LOGGER.info("[Exanira] Invitation set for player {} to join event {}", invitee.getUUID(), instanceKey);
+
+        // Push notification to invitee's Radio Menu Party tab
+        ExaniraMod.CHANNEL.send(
+                PacketDistributor.PLAYER.with(() -> invitee),
+                new InviteNotificationPacket(
+                        inviter.getName().getString(),
+                        instanceKey,
+                        active.definition().id()
+                )
+        );
+
+        inviter.sendMessage(new TextComponent("Invited " + invitee.getName().getString() + " to join your event.")
+                .withStyle(ChatFormatting.GREEN), Util.NIL_UUID);
+        invitee.sendMessage(new TextComponent(
+                inviter.getName().getString() + " has invited you to join their event! "
+                + "Open the Radio Menu (Party tab) to accept.")
+                .withStyle(ChatFormatting.AQUA), Util.NIL_UUID);
     }
 
     // ───────────────────────── RESYNC ───────────────────────────────────────

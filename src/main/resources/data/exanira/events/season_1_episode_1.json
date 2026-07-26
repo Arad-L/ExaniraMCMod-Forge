@@ -1,0 +1,92 @@
+{
+  "id": "season_1_episode_1",
+  "type": "main",
+  "season": 1,
+  "order": 1,
+  "offlineFallback": "ignore",
+  "unlockRequires": [],
+  "setsPersonalFlags": { "season_1_started": true },
+  "seasonFinale": false,
+  "grantsStatBoost": null,
+  "startScene": "intro",
+  "scenes": {
+    "intro": {
+      "dialogue": [
+        "Static fills the radio.",
+        "Then a voice, calm and clear:",
+        "'If anyone is out there — we have supplies, and we have walls. Find us.'"
+      ],
+      "choices": [
+        {
+          "text": "Respond to the broadcast",
+          "nextScene": "respond"
+        },
+        {
+          "text": "Stay silent and listen",
+          "requires": { "perception": 3 },
+          "checkType": "hard",
+          "nextScene": "listen_carefully",
+          "lockedText": "You can't make out enough to act on it."
+        },
+        {
+          "text": "Ignore it",
+          "nextScene": "ignore_broadcast"
+        }
+      ]
+    },
+    "respond": {
+      "dialogue": [
+        "You key the radio.",
+        "'Still here. Listening.'",
+        "A pause. Then: 'Good. We'll find you.'"
+      ],
+      "choices": [
+        {
+          "text": "Ask where they are",
+          "nextScene": "ask_location"
+        },
+        {
+          "text": "Say nothing more",
+          "nextScene": "end_contact"
+        }
+      ]
+    },
+    "listen_carefully": {
+      "dialogue": [
+        "You catch details in the background noise — wind, machinery, a church bell.",
+        "You think you know the general direction.",
+        "That's more than most people have."
+      ],
+      "choices": [],
+      "successEvent": null,
+      "starRating": 2
+    },
+    "ignore_broadcast": {
+      "dialogue": [
+        "You lower the radio.",
+        "Whatever they're offering, it can wait.",
+        "Or maybe it can't."
+      ],
+      "choices": [],
+      "starRating": 1
+    },
+    "ask_location": {
+      "dialogue": [
+        "They give you rough coordinates.",
+        "It won't be easy getting there, but you have a direction now.",
+        "The first step of a long journey."
+      ],
+      "choices": [],
+      "starRating": 3
+    },
+    "end_contact": {
+      "dialogue": [
+        "You click off.",
+        "The silence feels heavier than before.",
+        "But you heard them — and now you know you're not alone."
+      ],
+      "choices": [],
+      "starRating": 2
+    }
+  }
+}

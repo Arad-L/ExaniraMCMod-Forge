@@ -2,6 +2,7 @@ package com.exanira.item;
 
 import com.exanira.client.ClientEventState;
 import com.exanira.client.EventScreen;
+import com.exanira.client.RadioMenuScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.InteractionHand;
@@ -33,13 +34,22 @@ public class RadioItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         if (level.isClientSide()) {
-            openScreenIfActive();
+            if (player.isShiftKeyDown()) {
+                openRadioMenu();
+            } else {
+                openEventScreenIfActive();
+            }
         }
         return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), level.isClientSide());
     }
 
     @OnlyIn(Dist.CLIENT)
-    private static void openScreenIfActive() {
+    private static void openRadioMenu() {
+        Minecraft.getInstance().setScreen(new RadioMenuScreen());
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private static void openEventScreenIfActive() {
         if (ClientEventState.isActive()) {
             Minecraft.getInstance().setScreen(new EventScreen());
         }

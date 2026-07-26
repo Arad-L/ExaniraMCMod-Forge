@@ -1,6 +1,7 @@
-{
+﻿{
   "id": "the_doctor",
   "type": "side",
+  "season": 1,
   "offlineFallback": "ignore",
   "startScene": "arrival",
   "scenes": {

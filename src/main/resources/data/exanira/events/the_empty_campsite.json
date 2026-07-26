@@ -1,6 +1,7 @@
-{
+﻿{
   "id": "the_empty_campsite",
   "type": "side",
+  "season": 1,
   "offlineFallback": "ignore",
   "startScene": "discovery",
   "scenes": {

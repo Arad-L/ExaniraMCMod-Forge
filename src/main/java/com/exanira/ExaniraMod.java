@@ -9,14 +9,19 @@ import com.exanira.handlers.PlayerCapabilityHandler;
 import com.exanira.handlers.PlayerLoginHandler;
 import com.exanira.handlers.PlayerLogoutHandler;
 import com.exanira.item.ExaniraItems;
+import com.exanira.network.AcceptInvitePacket;
 import com.exanira.network.CharacterCreationSubmitPacket;
 import com.exanira.network.CharacterSheetSyncPacket;
 import com.exanira.network.EventChoicePacket;
 import com.exanira.network.EventEndPacket;
 import com.exanira.network.EventStartPacket;
+import com.exanira.network.InviteNotificationPacket;
 import com.exanira.network.OpenCharacterCreationPacket;
+import com.exanira.network.PartyStatusPacket;
 import com.exanira.network.PartyVotePacket;
 import com.exanira.network.PartyVoteStatePacket;
+import com.exanira.network.RequestPartyStatusPacket;
+import com.exanira.network.SendInvitePacket;
 
 // ==========================================
 // NEOFORGE 1.21.1 IMPORTS (COMMENTED OUT)
@@ -184,6 +189,40 @@ MinecraftForge.EVENT_BUS.register(PlayerLoginHandler.class); // FORGE 1.18.2 REP
                 PartyVoteStatePacket::decode,
                 PartyVoteStatePacket::handle,
                 Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        );
+        // Phase 4: party status packets
+        CHANNEL.registerMessage(id++,
+                RequestPartyStatusPacket.class,
+                RequestPartyStatusPacket::encode,
+                RequestPartyStatusPacket::decode,
+                RequestPartyStatusPacket::handle
+        );
+        CHANNEL.registerMessage(id++,
+                PartyStatusPacket.class,
+                PartyStatusPacket::encode,
+                PartyStatusPacket::decode,
+                PartyStatusPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        );
+        // Phase 4 / 4.7: UI-based party invite packets
+        CHANNEL.registerMessage(id++,
+                SendInvitePacket.class,
+                SendInvitePacket::encode,
+                SendInvitePacket::decode,
+                SendInvitePacket::handle
+        );
+        CHANNEL.registerMessage(id++,
+                InviteNotificationPacket.class,
+                InviteNotificationPacket::encode,
+                InviteNotificationPacket::decode,
+                InviteNotificationPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        );
+        CHANNEL.registerMessage(id++,
+                AcceptInvitePacket.class,
+                AcceptInvitePacket::encode,
+                AcceptInvitePacket::decode,
+                AcceptInvitePacket::handle
         );
     }
     // ==========================================

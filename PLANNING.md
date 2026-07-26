@@ -281,7 +281,7 @@ Two players whose personal state matches (same campaign chapter, same relevant d
 | Concern | Forge 1.18.2 API | Notes |
 |---|---|---|
 | Server-wide campaign state | `SavedData` | **Not implemented** — all story state is per-player in `CharacterSheet`. `CampaignSavedData` is reserved as a future placeholder if a global use case is identified. |
-| Character sheet (player data) | `Capability<CharacterSheet>` via `ExaniraCapabilityProvider` | Declared with `CapabilityManager.get(new CapabilityToken<CharacterSheet>(){})` in `CharacterSheetCapability`; provider attached via `AttachCapabilitiesEvent<Entity>` in `PlayerCapabilityHandler` |
+| Character sheet (player data) | `Capability<CharacterSheet>` via `ExaniraCapabilityProvider` | Declared with `CapabilityManager.get(new CapabilityToken<CharacterSheet>(){})` in `CharacterSheetCapability`; provider attached via `AttachCapabilitiesEvent<Entity>` in `PlayerCapabilityHandler`. Phase 4 adds: `currentSeason`, `completedMainEvents`, `witnessedMainEvents`, `personalFlags`, `seasonHistory`, `completedSideEvents`, `incrementStat()` |
 | Pending event state (player data) | `Capability<PendingEventAttachment>` via `ExaniraCapabilityProvider` | Declared with `CapabilityManager.get(new CapabilityToken<PendingEventAttachment>(){})` in `PendingEventCapability`; same provider as above |
 | Active event state (runtime) | `EventQueueManager` (in-memory) + `ActiveEventSavedData` | Persisted to `world/data/exanira_active_events_state.dat` on every state change via `persist()`; rebuilt into memory on `ServerStartedEvent` via `restoreEventsFromSave()` |
 | Active event state (persistence) | `ActiveEventSavedData` (SavedData) + `PendingEventAttachment` (capability NBT) | `ActiveEventSavedData`: full event snapshot (participants, votes, timers, scene) — server-wide. `PendingEventAttachment`: per-player anchor (3 fields: `instanceKey`, `eventId`, `sceneId`) stored in `playerdata/UUID.dat`; used by `resyncPlayerIfMidEvent()` on player login |
@@ -322,11 +322,12 @@ Two players whose personal state matches (same campaign chapter, same relevant d
 - [🟢 Complete] Logout mid-party handling (auto-vote on disconnect; remove from participants)
 
 ## Phase 4 — Main Story System
-- [ ] Per-player story progression fields in `CharacterSheet` (`currentSeason`, `completedMainEvents`, `witnessedMainEvents`, `personalFlags`)
-- [ ] Main story event infrastructure (per-player prerequisites; `setsPersonalFlags` and progression writes on resolution; per-player season advancement on finale)
-- [ ] Stat upgrade system (milestone-triggered on main story resolution)
-- [ ] Side event star-rating outcome tracking (`CompletedSideEventRecord`)
-- [ ] Radio Menu (Shift+Right-click) — Side Events tab (per-player history + stars), Main Quest tab (per-player progression), Party tab (vote status + invite)
+- [🟢 Complete] Per-player story progression fields in `CharacterSheet` (`currentSeason`, `completedMainEvents`, `witnessedMainEvents`, `personalFlags`, `seasonHistory`, `completedSideEvents`)
+- [🟢 Complete] Main story event infrastructure (per-player prerequisites; `setsPersonalFlags` and progression writes on resolution; per-player season advancement on finale)
+- [🟢 Complete] Stat upgrade system (milestone-triggered on main story resolution via `grantsStatBoost` in event JSON)
+- [🟢 Complete] Side event star-rating outcome tracking (`CompletedSideEventRecord`)
+- [🟢 Complete] Radio Menu (Shift+Right-click) — Side Events tab (per-player history + stars), Main Quest tab (per-player progression), Party tab (vote status + invite)
+- [ ] End-to-end test (flags persist across restart; season transition; star rating; Radio Menu; stat boost)
 
 ## Phase 5 — Horde Director
 - [ ] Spawn pressure director

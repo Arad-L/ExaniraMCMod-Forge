@@ -1,6 +1,7 @@
 {
   "id": "the_barricaded_house",
   "type": "side",
+  "season": 1,
   "offlineFallback": "ignore",
   "startScene": "approach_house",
   "scenes": {
@@ -119,6 +120,7 @@
         "The slot closes.",
         "The conversation is over."
       ],
+      "starRating": 1,
       "choices": []
     },
 
@@ -127,6 +129,7 @@
         "Several gun barrels appear through firing holes in the boards.",
         "'Wrong house.'"
       ],
+      "starRating": 1,
       "choices": []
     },
 
@@ -136,6 +139,7 @@
         "Before you leave, they hand you a small bag of supplies.",
         "'Good luck out there.'"
       ],
+      "starRating": 3,
       "choices": []
     },
 
@@ -145,6 +149,7 @@
         "As you leave, guilt follows close behind.",
         "If they head north, they may never come back."
       ],
+      "starRating": 2,
       "choices": []
     },
 
@@ -153,6 +158,7 @@
         "You continue down the street.",
         "Whatever story was inside that house remains unknown."
       ],
+      "starRating": 1,
       "choices": []
     }
   }

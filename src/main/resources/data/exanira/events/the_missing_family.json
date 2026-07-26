@@ -1,6 +1,7 @@
-{
+﻿{
   "id": "the_missing_family",
   "type": "side",
+  "season": 1,
   "offlineFallback": "ignore",
   "startScene": "roadside_meeting",
   "scenes": {

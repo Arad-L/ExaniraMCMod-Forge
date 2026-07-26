@@ -1,5 +1,8 @@
 package com.exanira.event;
 
+import com.exanira.character.Stat;
+
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -15,5 +18,18 @@ public record EventDefinition(
         String npc,
         String offlineFallback,
         String startScene,
-        Map<String, EventScene> scenes
-) {}
+        Map<String, EventScene> scenes,
+        // Phase 4 fields
+        int season,
+        int order,
+        List<String> unlockRequires,
+        Map<String, Boolean> setsPersonalFlags,
+        boolean seasonFinale,
+        StatBoost grantsStatBoost
+) {
+    /**
+     * Optional stat bonus awarded to all online participants when the event resolves.
+     * Applied in {@code EventQueueManager.endEvent()}.
+     */
+    public record StatBoost(Stat stat, int amount) {}
+}
